@@ -1,0 +1,91 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '2.7.18'
+    id 'io.spring.dependency-management' version '1.1.0'
+}
+
+group = 'com.vivek'
+version = '0.0.1-SNAPSHOT'
+description = 'Book Management System Assignment'
+sourceCompatibility = '11'
+targetCompatibility = '11'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Core Spring Boot starters
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-cache'
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-webflux' // For WebClient (Phase 5)
+    
+    // Database
+    implementation 'com.h2database:h2'
+    
+    // Documentation - Swagger/OpenAPI (Phase 10)
+    implementation 'org.springdoc:springdoc-openapi-ui:1.6.15'
+    implementation 'org.springdoc:springdoc-openapi-security:1.6.15'
+    
+    // JWT Support (Phase 8)
+    implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
+    implementation 'io.jsonwebtoken:jjwt-impl:0.11.5'
+    implementation 'io.jsonwebtoken:jjwt-jackson:0.11.5'
+    
+    // Utilities
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    
+    // Testing (Phase 9)
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
+    testImplementation 'org.mockito:mockito-core'
+    testImplementation 'org.mockito:mockito-junit-jupiter'
+}
+
+test {
+    useJUnitPlatform()
+    testLogging {
+        events "passed", "skipped", "failed"
+        exceptionFormat "full"
+        showStandardStreams = false
+    }
+    reports {
+        html.required = true
+        junitXml.required = true
+    }
+}
+
+// Task to generate test reports (Phase 9)
+task testReport(type: TestReport) {
+    destinationDirectory = file("$buildDir/reports/allTests")
+    testResults.from test
+}
+
+// JAR configuration for deployment (Phase 10)
+jar {
+    enabled = false
+    archiveClassifier = ''
+}
+
+bootJar {
+    archiveFileName = 'book-management-system.jar'
+    mainClass = 'com.vivek.bookms.BookManagementSystemApplication'
+}
+
+// Task to run application with specific profile
+task runDev(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.vivek.bookms.BookManagementSystemApplication'
+    systemProperty 'spring.profiles.active', 'dev'
+}
+
+task runProd(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'com.vivek.bookms.BookManagementSystemApplication'
+    systemProperty 'spring.profiles.active', 'prod'
+}
