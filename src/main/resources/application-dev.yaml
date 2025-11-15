@@ -1,0 +1,48 @@
+spring:
+  profiles:
+    active: dev
+  
+  # H2 Database Configuration (Development)
+  datasource:
+    url: jdbc:h2:mem:devdb
+    driverClassName: org.h2.Driver
+    username: sa
+    password: password
+  
+  # JPA Configuration
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+  
+  # H2 Console (enabled for development)
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+# Server Configuration
+server:
+  port: 8080
+
+# External API Configuration
+google:
+  books:
+    api:
+      url: https://www.googleapis.com/books/v1/volumes
+      key: ${GOOGLE_BOOKS_API_KEY:}
+
+# Logging Configuration (Development - more verbose)
+logging:
+  level:
+    com.vivek.bookms: DEBUG
+    org.springframework.web: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
