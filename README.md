@@ -317,4 +317,4 @@ For support, please create an issue in the repository or contact the development
 
 ---
 
-**Built with ❤️ using Spring Boot**
+**Built with ❤️ by Vivek**
