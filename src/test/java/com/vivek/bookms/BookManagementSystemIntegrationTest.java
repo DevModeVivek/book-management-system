@@ -8,7 +8,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureeMockMvc;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -65,7 +65,6 @@ class BookManagementSystemIntegrationTest {
                 .andExpect(jsonPath("$.data.title").value("Integration Test Book"))
                 .andReturn().getResponse().getContentAsString();
 
-        // Extract the created book ID from response
         // Get all books
         mockMvc.perform(get("/api/books"))
                 .andExpect(status().isOk())

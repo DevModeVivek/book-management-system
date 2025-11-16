@@ -23,10 +23,10 @@ public class GoogleBooksService {
     
     private static final Logger logger = LoggerFactory.getLogger(GoogleBooksService.class);
     
-    @Value("${google.books.api.url}")
+    @Value("${external.google-books.base-url}")
     private String googleBooksApiUrl;
     
-    @Value("${google.books.api.key:}")
+    @Value("${external.google-books.api-key:}")
     private String apiKey;
     
     private final RestTemplate restTemplate;

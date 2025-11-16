@@ -19,7 +19,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/books")
+@RequestMapping("/books")
 @Tag(name = "Book Management", description = "Operations for managing books")
 public class BookController {
 

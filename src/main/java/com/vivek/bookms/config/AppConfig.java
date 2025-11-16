@@ -1,6 +1,8 @@
 package com.vivek.bookms.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import com.vivek.bookms.interceptor.RequestLoggingInterceptor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -11,6 +13,12 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 public class AppConfig implements WebMvcConfigurer {
     
+    private final RequestLoggingInterceptor requestLoggingInterceptor;
+    
+    public AppConfig(RequestLoggingInterceptor requestLoggingInterceptor) {
+        this.requestLoggingInterceptor = requestLoggingInterceptor;
+    }
+    
     @Bean
     public RestTemplate restTemplate() {
         return new RestTemplate();
@@ -18,17 +26,15 @@ public class AppConfig implements WebMvcConfigurer {
     
     @Bean
     public ObjectMapper objectMapper() {
-        return new ObjectMapper();
-    }
-    
-    @Bean
-    public RequestLoggingInterceptor requestLoggingInterceptor() {
-        return new RequestLoggingInterceptor();
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
+        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        return mapper;
     }
     
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(requestLoggingInterceptor())
+        registry.addInterceptor(requestLoggingInterceptor)
                 .addPathPatterns("/api/**");
     }
 }
