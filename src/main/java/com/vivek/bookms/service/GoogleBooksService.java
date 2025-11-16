@@ -1,7 +1,6 @@
 package com.vivek.bookms.service;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vivek.bookms.dto.BookDTO;
 import com.vivek.bookms.exception.ExternalApiException;
 import org.slf4j.Logger;
@@ -9,7 +8,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.time.LocalDate;
@@ -29,12 +27,13 @@ public class GoogleBooksService implements IGoogleBooksService {
     @Value("${external.google-books.api-key:}")
     private String apiKey;
     
-    private final RestTemplate restTemplate;
-    private final ObjectMapper objectMapper;
+    // Using interfaces for external service dependencies
+    private final IHttpClientService httpClientService;
+    private final IJsonProcessingService jsonProcessingService;
     
-    public GoogleBooksService(RestTemplate restTemplate, ObjectMapper objectMapper) {
-        this.restTemplate = restTemplate;
-        this.objectMapper = objectMapper;
+    public GoogleBooksService(IHttpClientService httpClientService, IJsonProcessingService jsonProcessingService) {
+        this.httpClientService = httpClientService;
+        this.jsonProcessingService = jsonProcessingService;
     }
     
     @Override
@@ -68,7 +67,8 @@ public class GoogleBooksService implements IGoogleBooksService {
             String url = uriBuilder.toUriString();
             logger.debug("Request URL: {}", url);
             
-            ResponseEntity<String> response = restTemplate.getForEntity(url, String.class);
+            // Using interface-based HTTP client service
+            ResponseEntity<String> response = httpClientService.getForEntity(url, String.class);
             
             if (response.getStatusCode().is2xxSuccessful()) {
                 return parseGoogleBooksResponse(response.getBody());
@@ -86,7 +86,8 @@ public class GoogleBooksService implements IGoogleBooksService {
         List<BookDTO> books = new ArrayList<>();
         
         try {
-            JsonNode rootNode = objectMapper.readTree(responseBody);
+            // Using interface-based JSON processing service
+            JsonNode rootNode = jsonProcessingService.readTree(responseBody);
             JsonNode itemsNode = rootNode.get("items");
             
             if (itemsNode != null && itemsNode.isArray()) {
