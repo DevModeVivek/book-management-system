@@ -56,7 +56,7 @@ class BookManagementSystemIntegrationTest {
     @WithMockUser(roles = "ADMIN")
     void completeBookCrudFlow() throws Exception {
         // Create a book
-        String createResponse = mockMvc.perform(post("/api/books")
+        String createResponse = mockMvc.perform(post("/books")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(testBookDTO)))
@@ -66,14 +66,14 @@ class BookManagementSystemIntegrationTest {
                 .andReturn().getResponse().getContentAsString();
 
         // Get all books
-        mockMvc.perform(get("/api/books"))
+        mockMvc.perform(get("/books"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data").isArray())
                 .andExpect(jsonPath("$.data[0].title").value("Integration Test Book"));
 
         // Search books
-        mockMvc.perform(get("/api/books/search")
+        mockMvc.perform(get("/books/search")
                 .param("query", "Integration"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true))
@@ -84,22 +84,22 @@ class BookManagementSystemIntegrationTest {
     @DisplayName("Should handle authentication and authorization correctly")
     void testSecurityConfiguration() throws Exception {
         // Unauthenticated request should be denied
-        mockMvc.perform(get("/api/books"))
+        mockMvc.perform(get("/books"))
                 .andExpect(status().isUnauthorized());
 
         // USER role should be able to access external search
-        mockMvc.perform(get("/api/books/external/search")
+        mockMvc.perform(get("/books/external/search")
                 .param("query", "test")
                 .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic("user", "user123")))
                 .andExpect(status().isOk());
 
         // USER role should NOT be able to access CRUD operations
-        mockMvc.perform(get("/api/books")
+        mockMvc.perform(get("/books")
                 .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic("user", "user123")))
                 .andExpect(status().isForbidden());
 
         // ADMIN role should be able to access CRUD operations
-        mockMvc.perform(get("/api/books")
+        mockMvc.perform(get("/books")
                 .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic("admin", "admin123")))
                 .andExpect(status().isOk());
     }

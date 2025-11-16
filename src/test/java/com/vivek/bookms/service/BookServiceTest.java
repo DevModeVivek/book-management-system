@@ -33,13 +33,15 @@ class BookServiceTest {
     private BookMapper bookMapper;
 
     @InjectMocks
-    private BookService bookService;
+    private BookService bookService; // Test the concrete implementation
 
     private Book testBook;
     private BookDTO testBookDTO;
+    private IBookService bookServiceInterface; // Reference to interface
 
     @BeforeEach
     void setUp() {
+        // Initialize test data
         testBook = new Book();
         testBook.setId(1L);
         testBook.setTitle("Test Book");
@@ -53,6 +55,9 @@ class BookServiceTest {
         testBookDTO.setAuthor("Test Author");
         testBookDTO.setIsbn("1234567890");
         testBookDTO.setPublishedDate(LocalDate.of(2023, 1, 1));
+        
+        // Use interface reference
+        bookServiceInterface = bookService;
     }
 
     @Test
@@ -60,17 +65,15 @@ class BookServiceTest {
     void getAllBooks_ShouldReturnAllBooks() {
         // Given
         List<Book> books = Arrays.asList(testBook);
-        List<BookDTO> expectedDTOs = Arrays.asList(testBookDTO);
-
         when(bookRepository.findAll()).thenReturn(books);
         when(bookMapper.toDTO(testBook)).thenReturn(testBookDTO);
 
         // When
-        List<BookDTO> result = bookService.getAllBooks();
+        List<BookDTO> result = bookServiceInterface.getAllBooks();
 
         // Then
         assertEquals(1, result.size());
-        assertEquals(expectedDTOs.get(0).getTitle(), result.get(0).getTitle());
+        assertEquals(testBookDTO.getTitle(), result.get(0).getTitle());
         verify(bookRepository).findAll();
         verify(bookMapper).toDTO(testBook);
     }
@@ -83,7 +86,7 @@ class BookServiceTest {
         when(bookMapper.toDTO(testBook)).thenReturn(testBookDTO);
 
         // When
-        BookDTO result = bookService.getBookById(1L);
+        BookDTO result = bookServiceInterface.getBookById(1L);
 
         // Then
         assertNotNull(result);
@@ -99,7 +102,7 @@ class BookServiceTest {
         when(bookRepository.findById(999L)).thenReturn(Optional.empty());
 
         // When & Then
-        assertThrows(BookNotFoundException.class, () -> bookService.getBookById(999L));
+        assertThrows(BookNotFoundException.class, () -> bookServiceInterface.getBookById(999L));
         verify(bookRepository).findById(999L);
         verify(bookMapper, never()).toDTO(any());
     }
@@ -113,7 +116,7 @@ class BookServiceTest {
         when(bookMapper.toDTO(testBook)).thenReturn(testBookDTO);
 
         // When
-        BookDTO result = bookService.createBook(testBookDTO);
+        BookDTO result = bookServiceInterface.createBook(testBookDTO);
 
         // Then
         assertNotNull(result);
@@ -132,7 +135,7 @@ class BookServiceTest {
         when(bookMapper.toDTO(testBook)).thenReturn(testBookDTO);
 
         // When
-        BookDTO result = bookService.updateBook(1L, testBookDTO);
+        BookDTO result = bookServiceInterface.updateBook(1L, testBookDTO);
 
         // Then
         assertNotNull(result);
@@ -150,7 +153,7 @@ class BookServiceTest {
         when(bookRepository.existsById(1L)).thenReturn(true);
 
         // When
-        assertDoesNotThrow(() -> bookService.deleteBook(1L));
+        assertDoesNotThrow(() -> bookServiceInterface.deleteBook(1L));
 
         // Then
         verify(bookRepository).existsById(1L);
@@ -168,7 +171,7 @@ class BookServiceTest {
         when(bookMapper.toDTO(testBook)).thenReturn(testBookDTO);
 
         // When
-        List<BookDTO> result = bookService.searchBooks(query);
+        List<BookDTO> result = bookServiceInterface.searchBooks(query);
 
         // Then
         assertEquals(1, result.size());

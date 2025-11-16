@@ -19,7 +19,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Service
-public class GoogleBooksService {
+public class GoogleBooksService implements IGoogleBooksService {
     
     private static final Logger logger = LoggerFactory.getLogger(GoogleBooksService.class);
     
@@ -37,21 +37,27 @@ public class GoogleBooksService {
         this.objectMapper = objectMapper;
     }
     
+    @Override
     public List<BookDTO> searchBooksByTitle(String title) {
         logger.info("Searching Google Books API for title: {}", title);
         return searchBooks("intitle:" + title);
     }
     
+    @Override
     public List<BookDTO> searchBooksByAuthor(String author) {
         logger.info("Searching Google Books API for author: {}", author);
         return searchBooks("inauthor:" + author);
     }
     
+    @Override
     public List<BookDTO> searchBooks(String query) {
         try {
             logger.info("Making request to Google Books API with query: {}", query);
             
-            UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromHttpUrl(googleBooksApiUrl)
+            // Fix: Add /volumes to the API URL for correct Google Books API endpoint
+            String fullApiUrl = googleBooksApiUrl + "/volumes";
+            
+            UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromHttpUrl(fullApiUrl)
                 .queryParam("q", query)
                 .queryParam("maxResults", 10);
             

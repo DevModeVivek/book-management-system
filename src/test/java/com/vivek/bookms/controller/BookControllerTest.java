@@ -2,8 +2,8 @@ package com.vivek.bookms.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vivek.bookms.dto.BookDTO;
-import com.vivek.bookms.service.BookService;
-import com.vivek.bookms.service.GoogleBooksService;
+import com.vivek.bookms.service.IBookService;
+import com.vivek.bookms.service.IGoogleBooksService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -33,10 +33,10 @@ class BookControllerTest {
     private MockMvc mockMvc;
 
     @MockBean
-    private BookService bookService;
+    private IBookService bookService;
 
     @MockBean
-    private GoogleBooksService googleBooksService;
+    private IGoogleBooksService googleBooksService;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -62,9 +62,9 @@ class BookControllerTest {
         when(bookService.getAllBooks()).thenReturn(books);
 
         // When & Then
-        mockMvc.perform(get("/api/books"))
+        mockMvc.perform(get("/books"))
                 .andExpect(status().isOk())
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON_UTF8))
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data[0].title").value("Test Book"));
     }
@@ -77,9 +77,9 @@ class BookControllerTest {
         when(bookService.getBookById(1L)).thenReturn(testBookDTO);
 
         // When & Then
-        mockMvc.perform(get("/api/books/1"))
+        mockMvc.perform(get("/books/1"))
                 .andExpect(status().isOk())
-                .andExpected(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.title").value("Test Book"));
     }
@@ -92,7 +92,7 @@ class BookControllerTest {
         when(bookService.createBook(any(BookDTO.class))).thenReturn(testBookDTO);
 
         // When & Then
-        mockMvc.perform(post("/api/books")
+        mockMvc.perform(post("/books")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(testBookDTO)))
@@ -110,7 +110,7 @@ class BookControllerTest {
         when(bookService.updateBook(eq(1L), any(BookDTO.class))).thenReturn(testBookDTO);
 
         // When & Then
-        mockMvc.perform(put("/api/books/1")
+        mockMvc.perform(put("/books/1")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(testBookDTO)))
@@ -124,7 +124,7 @@ class BookControllerTest {
     @DisplayName("Should return forbidden when USER tries to access ADMIN endpoints")
     @WithMockUser(roles = "USER")
     void getAllBooks_WithUserRole_ShouldReturnForbidden() throws Exception {
-        mockMvc.perform(get("/api/books"))
+        mockMvc.perform(get("/books"))
                 .andExpect(status().isForbidden());
     }
 
@@ -137,7 +137,7 @@ class BookControllerTest {
         when(googleBooksService.searchBooks("test")).thenReturn(books);
 
         // When & Then
-        mockMvc.perform(get("/api/books/external/search")
+        mockMvc.perform(get("/books/external/search")
                 .param("query", "test"))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))

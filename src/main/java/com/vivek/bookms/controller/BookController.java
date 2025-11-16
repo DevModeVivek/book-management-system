@@ -1,8 +1,8 @@
 package com.vivek.bookms.controller;
 
 import com.vivek.bookms.dto.BookDTO;
-import com.vivek.bookms.service.BookService;
-import com.vivek.bookms.service.GoogleBooksService;
+import com.vivek.bookms.service.IBookService;
+import com.vivek.bookms.service.IGoogleBooksService;
 import com.vivek.bookms.util.ResponseBuilder;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -25,11 +25,11 @@ public class BookController {
 
     private static final Logger logger = LoggerFactory.getLogger(BookController.class);
     
-    private final BookService bookService;
-    private final GoogleBooksService googleBooksService;
+    private final IBookService bookService;
+    private final IGoogleBooksService googleBooksService;
 
     @Autowired
-    public BookController(BookService bookService, GoogleBooksService googleBooksService) {
+    public BookController(IBookService bookService, IGoogleBooksService googleBooksService) {
         this.bookService = bookService;
         this.googleBooksService = googleBooksService;
     }

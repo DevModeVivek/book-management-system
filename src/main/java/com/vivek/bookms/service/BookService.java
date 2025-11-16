@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 
 @Service
 @Transactional
-public class BookService {
+public class BookService implements IBookService {
     
     private static final Logger logger = LoggerFactory.getLogger(BookService.class);
     
@@ -29,6 +29,7 @@ public class BookService {
         this.bookMapper = bookMapper;
     }
     
+    @Override
     public List<BookDTO> getAllBooks() {
         logger.info("Fetching all books");
         List<Book> books = bookRepository.findAll();
@@ -38,6 +39,7 @@ public class BookService {
                    .collect(Collectors.toList());
     }
     
+    @Override
     public BookDTO getBookById(Long id) {
         logger.info("Fetching book with id: {}", id);
         Book book = bookRepository.findById(id)
@@ -49,6 +51,7 @@ public class BookService {
         return bookMapper.toDTO(book);
     }
     
+    @Override
     public BookDTO createBook(BookDTO bookDTO) {
         logger.info("Creating new book: {}", bookDTO.getTitle());
         Book book = bookMapper.toEntity(bookDTO);
@@ -57,6 +60,7 @@ public class BookService {
         return bookMapper.toDTO(savedBook);
     }
     
+    @Override
     public BookDTO updateBook(Long id, BookDTO bookDTO) {
         logger.info("Updating book with id: {}", id);
         Book existingBook = bookRepository.findById(id)
@@ -71,6 +75,7 @@ public class BookService {
         return bookMapper.toDTO(updatedBook);
     }
     
+    @Override
     public void deleteBook(Long id) {
         logger.info("Deleting book with id: {}", id);
         if (!bookRepository.existsById(id)) {
@@ -81,6 +86,7 @@ public class BookService {
         logger.info("Successfully deleted book with id: {}", id);
     }
     
+    @Override
     public List<BookDTO> searchBooks(String query) {
         logger.info("Searching books with query: {}", query);
         List<Book> books = bookRepository.findByTitleContainingIgnoreCaseOrAuthorContainingIgnoreCase(query, query);
