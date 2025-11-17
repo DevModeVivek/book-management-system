@@ -1,34 +1,44 @@
 package com.vivek.bookms.dto;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.NotNull;
-import javax.validation.constraints.Pattern;
+import javax.validation.constraints.*;
 import java.time.LocalDate;
 
-public class BookDTO {
+/**
+ * Book DTO extending BaseDTO with book-specific properties and validation
+ */
+public class BookDTO extends BaseDTO {
     
-    private Long id;
-    
-    @NotBlank(message = "Title is required")
+    @NotBlank(message = "Title is required and cannot be empty")
+    @Size(min = 1, max = 255, message = "Title must be between 1 and 255 characters")
     private String title;
     
-    @NotBlank(message = "Author is required")
+    @NotBlank(message = "Author is required and cannot be empty")
+    @Size(min = 1, max = 255, message = "Author must be between 1 and 255 characters")
     private String author;
     
-    @Pattern(regexp = "\\d{10}|\\d{13}", message = "ISBN must be 10 or 13 digits")
+    @Pattern(regexp = "^(?:ISBN(?:-1[03])?:? )?(?=[0-9X]{10}$|(?=(?:[0-9]+[- ]){3})[- 0-9X]{13}$|97[89][0-9]{10}$|(?=(?:[0-9]+[- ]){4})[- 0-9]{17}$)(?:97[89][- ]?)?[0-9]{1,5}[- ]?[0-9]+[- ]?[0-9]+[- ]?[0-9X]$", 
+             message = "ISBN must be a valid format")
     private String isbn;
     
-    @JsonFormat(pattern = "yyyy-MM-dd")
     @NotNull(message = "Published date is required")
+    @PastOrPresent(message = "Published date cannot be in the future")
+    @JsonFormat(pattern = "yyyy-MM-dd")
     private LocalDate publishedDate;
     
     // Default constructor
-    public BookDTO() {}
+    public BookDTO() {
+        super();
+    }
     
-    // Constructor with all fields
+    // Constructor with ID
+    public BookDTO(Long id) {
+        super(id);
+    }
+    
+    // Full constructor
     public BookDTO(Long id, String title, String author, String isbn, LocalDate publishedDate) {
-        this.id = id;
+        super(id);
         this.title = title;
         this.author = author;
         this.isbn = isbn;
@@ -36,14 +46,6 @@ public class BookDTO {
     }
     
     // Getters and Setters
-    public Long getId() {
-        return id;
-    }
-    
-    public void setId(Long id) {
-        this.id = id;
-    }
-    
     public String getTitle() {
         return title;
     }
@@ -79,11 +81,13 @@ public class BookDTO {
     @Override
     public String toString() {
         return "BookDTO{" +
-                "id=" + id +
+                "id=" + getId() +
                 ", title='" + title + '\'' +
                 ", author='" + author + '\'' +
                 ", isbn='" + isbn + '\'' +
                 ", publishedDate=" + publishedDate +
+                ", createdAt=" + getCreatedAt() +
+                ", updatedAt=" + getUpdatedAt() +
                 '}';
     }
 }

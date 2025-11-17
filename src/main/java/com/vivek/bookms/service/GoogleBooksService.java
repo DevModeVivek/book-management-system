@@ -53,7 +53,6 @@ public class GoogleBooksService implements IGoogleBooksService {
         try {
             logger.info("Making request to Google Books API with query: {}", query);
             
-            // Fix: Add /volumes to the API URL for correct Google Books API endpoint
             String fullApiUrl = googleBooksApiUrl + "/volumes";
             
             UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromHttpUrl(fullApiUrl)

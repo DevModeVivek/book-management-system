@@ -4,43 +4,9 @@ import com.vivek.bookms.dto.BookDTO;
 import java.util.List;
 
 /**
- * Service interface for book management operations
+ * Book service interface extending ICrudService with book-specific operations
  */
-public interface IBookService {
-    
-    /**
-     * Retrieve all books
-     * @return List of all books
-     */
-    List<BookDTO> getAllBooks();
-    
-    /**
-     * Get book by ID
-     * @param id Book ID
-     * @return Book DTO
-     */
-    BookDTO getBookById(Long id);
-    
-    /**
-     * Create a new book
-     * @param bookDTO Book data
-     * @return Created book DTO
-     */
-    BookDTO createBook(BookDTO bookDTO);
-    
-    /**
-     * Update an existing book
-     * @param id Book ID
-     * @param bookDTO Updated book data
-     * @return Updated book DTO
-     */
-    BookDTO updateBook(Long id, BookDTO bookDTO);
-    
-    /**
-     * Delete a book
-     * @param id Book ID
-     */
-    void deleteBook(Long id);
+public interface IBookService extends ICrudService<BookDTO, Long> {
     
     /**
      * Search books by title or author
@@ -48,4 +14,25 @@ public interface IBookService {
      * @return List of matching books
      */
     List<BookDTO> searchBooks(String query);
+    
+    /**
+     * Find books by title (case insensitive)
+     * @param title Book title
+     * @return List of matching books
+     */
+    List<BookDTO> findByTitle(String title);
+    
+    /**
+     * Find books by author (case insensitive)
+     * @param author Book author
+     * @return List of matching books
+     */
+    List<BookDTO> findByAuthor(String author);
+    
+    /**
+     * Find book by ISBN
+     * @param isbn Book ISBN
+     * @return BookDTO if found, null otherwise
+     */
+    BookDTO findByIsbn(String isbn);
 }

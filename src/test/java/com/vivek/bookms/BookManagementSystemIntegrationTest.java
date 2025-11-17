@@ -47,7 +47,7 @@ class BookManagementSystemIntegrationTest {
         testBookDTO = new BookDTO();
         testBookDTO.setTitle("Integration Test Book");
         testBookDTO.setAuthor("Test Author");
-        testBookDTO.setIsbn("1234567890123");
+        testBookDTO.setIsbn("9781234567890");
         testBookDTO.setPublishedDate(LocalDate.of(2023, 1, 1));
     }
 

@@ -4,46 +4,68 @@ import com.vivek.bookms.dto.BookDTO;
 import com.vivek.bookms.entity.Book;
 import org.springframework.stereotype.Component;
 
+/**
+ * Book mapper implementation with dependency injection support
+ */
 @Component
-public class BookMapper {
+public class BookMapper implements IBookMapper {
     
+    @Override
     public BookDTO toDTO(Book book) {
         if (book == null) {
             return null;
         }
         
-        return new BookDTO(
+        BookDTO dto = new BookDTO(
             book.getId(),
             book.getTitle(),
             book.getAuthor(),
             book.getIsbn(),
             book.getPublishedDate()
         );
+        
+        // Set timestamps from base entity
+        dto.setCreatedAt(book.getCreatedAt());
+        dto.setUpdatedAt(book.getUpdatedAt());
+        
+        return dto;
     }
     
-    public Book toEntity(BookDTO bookDTO) {
-        if (bookDTO == null) {
+    @Override
+    public Book toEntity(BookDTO dto) {
+        if (dto == null) {
             return null;
         }
         
         Book book = new Book();
-        book.setId(bookDTO.getId());
-        book.setTitle(bookDTO.getTitle());
-        book.setAuthor(bookDTO.getAuthor());
-        book.setIsbn(bookDTO.getIsbn());
-        book.setPublishedDate(bookDTO.getPublishedDate());
+        book.setId(dto.getId());
+        book.setTitle(dto.getTitle());
+        book.setAuthor(dto.getAuthor());
+        book.setIsbn(dto.getIsbn());
+        book.setPublishedDate(dto.getPublishedDate());
+        
+        // Set timestamps if available
+        if (dto.getCreatedAt() != null) {
+            book.setCreatedAt(dto.getCreatedAt());
+        }
+        if (dto.getUpdatedAt() != null) {
+            book.setUpdatedAt(dto.getUpdatedAt());
+        }
         
         return book;
     }
     
-    public void updateEntityFromDTO(BookDTO bookDTO, Book book) {
-        if (bookDTO == null || book == null) {
+    @Override
+    public void updateEntityFromDTO(BookDTO dto, Book book) {
+        if (dto == null || book == null) {
             return;
         }
         
-        book.setTitle(bookDTO.getTitle());
-        book.setAuthor(bookDTO.getAuthor());
-        book.setIsbn(bookDTO.getIsbn());
-        book.setPublishedDate(bookDTO.getPublishedDate());
+        book.setTitle(dto.getTitle());
+        book.setAuthor(dto.getAuthor());
+        book.setIsbn(dto.getIsbn());
+        book.setPublishedDate(dto.getPublishedDate());
+        
+        // Update timestamp will be handled by JPA @PreUpdate
     }
 }
