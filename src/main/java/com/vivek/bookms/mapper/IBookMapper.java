@@ -4,8 +4,7 @@ import com.vivek.bookms.dto.BookDTO;
 import com.vivek.bookms.entity.Book;
 
 /**
- * Book mapper interface extending generic IMapper
+ * Streamlined Book mapper interface
  */
 public interface IBookMapper extends IMapper<Book, BookDTO> {
-    // Inherits all methods from IMapper<Book, BookDTO>
 }

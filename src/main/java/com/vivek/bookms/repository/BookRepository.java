@@ -1,6 +1,7 @@
 package com.vivek.bookms.repository;
 
 import com.vivek.bookms.entity.Book;
+import com.vivek.bookms.repository.base.BaseRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;

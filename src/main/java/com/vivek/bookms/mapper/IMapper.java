@@ -1,7 +1,9 @@
 package com.vivek.bookms.mapper;
 
+import java.util.List;
+
 /**
- * Generic mapper interface for entity-DTO conversions
+ * Enhanced generic mapper interface for entity-DTO conversions with list support
  * @param <E> Entity type
  * @param <D> DTO type
  */
@@ -20,6 +22,20 @@ public interface IMapper<E, D> {
      * @return Converted entity
      */
     E toEntity(D dto);
+    
+    /**
+     * Convert list of entities to list of DTOs
+     * @param entities List of entities to convert
+     * @return List of converted DTOs
+     */
+    List<D> toDTOList(List<E> entities);
+    
+    /**
+     * Convert list of DTOs to list of entities
+     * @param dtos List of DTOs to convert
+     * @return List of converted entities
+     */
+    List<E> toEntityList(List<D> dtos);
     
     /**
      * Update entity with DTO data
