@@ -1,28 +1,45 @@
 package com.vivek.bookms.repository;
 
 import com.vivek.bookms.entity.Book;
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
 /**
- * Book repository extending both JpaRepository and IBookRepository
+ * Streamlined Book repository with essential book-specific operations
  */
 @Repository
-public interface BookRepository extends JpaRepository<Book, Long>, IBookRepository {
+public interface BookRepository extends BaseRepository<Book> {
     
-    // Custom query methods with proper error handling
-    @Query("SELECT b FROM Book b WHERE LOWER(b.title) LIKE LOWER(CONCAT('%', :title, '%'))")
-    List<Book> findByTitleContainingIgnoreCase(@Param("title") String title);
+    // ISBN Operations
+    Optional<Book> findByIsbnAndIsActiveTrue(String isbn);
+    boolean existsByIsbnAndIsActiveTrue(String isbn);
     
-    @Query("SELECT b FROM Book b WHERE LOWER(b.title) LIKE LOWER(CONCAT('%', :query, '%')) OR LOWER(b.author) LIKE LOWER(CONCAT('%', :query, '%'))")
-    List<Book> findByTitleContainingIgnoreCaseOrAuthorContainingIgnoreCase(@Param("query") String title, @Param("query") String author);
+    @Query("SELECT COUNT(b) > 0 FROM Book b WHERE b.isbn = :isbn AND b.id != :excludeId AND b.isActive = true")
+    boolean existsByIsbnAndIdNotAndIsActiveTrue(@Param("isbn") String isbn, @Param("excludeId") Long excludeId);
     
-    @Query("SELECT b FROM Book b WHERE LOWER(b.author) LIKE LOWER(CONCAT('%', :author, '%'))")
-    List<Book> findByAuthorContainingIgnoreCase(@Param("author") String author);
+    // Search Operations
+    @Query("SELECT b FROM Book b WHERE " +
+           "(LOWER(b.title) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+           "LOWER(b.author) LIKE LOWER(CONCAT('%', :query, '%'))) " +
+           "AND b.isActive = true")
+    List<Book> searchByTitleOrAuthorAndIsActiveTrue(@Param("query") String query);
     
-    Optional<Book> findByIsbn(String isbn);
+    @Query("SELECT b FROM Book b WHERE " +
+           "(LOWER(b.title) LIKE LOWER(CONCAT('%', :query, '%')) OR " +
+           "LOWER(b.author) LIKE LOWER(CONCAT('%', :query, '%'))) " +
+           "AND b.isActive = true")
+    Page<Book> searchByTitleOrAuthorAndIsActiveTrue(@Param("query") String query, Pageable pageable);
+    
+    // Filtering Operations
+    List<Book> findByGenreIgnoreCaseAndIsActiveTrue(String genre);
+    List<Book> findByPublisherIgnoreCaseAndIsActiveTrue(String publisher);
+    List<Book> findByPublishedDateAfterAndIsActiveTrue(LocalDate date);
+    List<Book> findByPublishedDateBetweenAndIsActiveTrue(LocalDate startDate, LocalDate endDate);
 }

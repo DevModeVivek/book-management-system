@@ -1,14 +1,19 @@
 package com.vivek.bookms.service;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+
 import java.util.List;
 import java.util.Optional;
 
 /**
- * Generic CRUD service interface for basic operations
+ * Enhanced CRUD service interface with comprehensive operations including pagination
  * @param <T> Entity/DTO type
  * @param <ID> ID type
  */
 public interface ICrudService<T, ID> {
+    
+    // ============= BASIC CRUD OPERATIONS =============
     
     /**
      * Create a new entity
@@ -31,6 +36,13 @@ public interface ICrudService<T, ID> {
     List<T> getAll();
     
     /**
+     * Get all entities with pagination
+     * @param pageable Pagination information
+     * @return Page of entities
+     */
+    Page<T> getAll(Pageable pageable);
+    
+    /**
      * Update existing entity
      * @param id Entity ID
      * @param entity Updated entity data
@@ -44,12 +56,35 @@ public interface ICrudService<T, ID> {
      */
     void delete(ID id);
     
+    // ============= SOFT DELETE OPERATIONS =============
+    
+    /**
+     * Soft delete entity by ID (mark as inactive)
+     * @param id Entity ID
+     */
+    void softDelete(ID id);
+    
+    /**
+     * Restore a soft-deleted entity by ID
+     * @param id Entity ID
+     */
+    void restore(ID id);
+    
+    // ============= EXISTENCE AND COUNT OPERATIONS =============
+    
     /**
      * Check if entity exists by ID
      * @param id Entity ID
      * @return true if exists, false otherwise
      */
     boolean exists(ID id);
+    
+    /**
+     * Check if entity exists by ID (alternative method name)
+     * @param id Entity ID
+     * @return true if exists, false otherwise
+     */
+    boolean existsById(ID id);
     
     /**
      * Count total entities

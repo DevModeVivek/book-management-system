@@ -3,8 +3,8 @@ package com.vivek.bookms.service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.vivek.bookms.dto.BookDTO;
 import com.vivek.bookms.exception.ExternalApiException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -17,9 +17,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
+@Slf4j
 public class GoogleBooksService implements IGoogleBooksService {
-    
-    private static final Logger logger = LoggerFactory.getLogger(GoogleBooksService.class);
     
     @Value("${external.google-books.base-url}")
     private String googleBooksApiUrl;
@@ -27,31 +27,26 @@ public class GoogleBooksService implements IGoogleBooksService {
     @Value("${external.google-books.api-key:}")
     private String apiKey;
     
-    // Using interfaces for external service dependencies
+    // Using interfaces for external service dependencies - final fields handled by @RequiredArgsConstructor
     private final IHttpClientService httpClientService;
     private final IJsonProcessingService jsonProcessingService;
     
-    public GoogleBooksService(IHttpClientService httpClientService, IJsonProcessingService jsonProcessingService) {
-        this.httpClientService = httpClientService;
-        this.jsonProcessingService = jsonProcessingService;
-    }
-    
     @Override
     public List<BookDTO> searchBooksByTitle(String title) {
-        logger.info("Searching Google Books API for title: {}", title);
+        log.info("Searching Google Books API for title: {}", title);
         return searchBooks("intitle:" + title);
     }
     
     @Override
     public List<BookDTO> searchBooksByAuthor(String author) {
-        logger.info("Searching Google Books API for author: {}", author);
+        log.info("Searching Google Books API for author: {}", author);
         return searchBooks("inauthor:" + author);
     }
     
     @Override
     public List<BookDTO> searchBooks(String query) {
         try {
-            logger.info("Making request to Google Books API with query: {}", query);
+            log.info("Making request to Google Books API with query: {}", query);
             
             String fullApiUrl = googleBooksApiUrl + "/volumes";
             
@@ -64,7 +59,7 @@ public class GoogleBooksService implements IGoogleBooksService {
             }
             
             String url = uriBuilder.toUriString();
-            logger.debug("Request URL: {}", url);
+            log.debug("Request URL: {}", url);
             
             // Using interface-based HTTP client service
             ResponseEntity<String> response = httpClientService.getForEntity(url, String.class);
@@ -76,7 +71,7 @@ public class GoogleBooksService implements IGoogleBooksService {
             }
             
         } catch (Exception e) {
-            logger.error("Error calling Google Books API: {}", e.getMessage(), e);
+            log.error("Error calling Google Books API: {}", e.getMessage(), e);
             throw new ExternalApiException("Error calling Google Books API: " + e.getMessage());
         }
     }
@@ -101,10 +96,10 @@ public class GoogleBooksService implements IGoogleBooksService {
                 }
             }
             
-            logger.info("Parsed {} books from Google Books API response", books.size());
+            log.info("Parsed {} books from Google Books API response", books.size());
             
         } catch (Exception e) {
-            logger.error("Error parsing Google Books API response: {}", e.getMessage(), e);
+            log.error("Error parsing Google Books API response: {}", e.getMessage(), e);
             throw new ExternalApiException("Error parsing Google Books API response");
         }
         
@@ -153,7 +148,7 @@ public class GoogleBooksService implements IGoogleBooksService {
             }
             
         } catch (Exception e) {
-            logger.warn("Error parsing individual book from Google Books API: {}", e.getMessage());
+            log.warn("Error parsing individual book from Google Books API: {}", e.getMessage());
         }
         
         return null;
@@ -174,7 +169,7 @@ public class GoogleBooksService implements IGoogleBooksService {
                 return LocalDate.parse(dateStr + "-01-01", DateTimeFormatter.ISO_LOCAL_DATE);
             }
         } catch (DateTimeParseException e) {
-            logger.warn("Could not parse date: {}", dateStr);
+            log.warn("Could not parse date: {}", dateStr);
         }
         
         return LocalDate.now(); // Default to current date if parsing fails
