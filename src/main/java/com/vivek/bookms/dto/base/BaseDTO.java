@@ -3,6 +3,7 @@ package com.vivek.bookms.dto.base;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.vivek.bookms.constants.AppConstants;
+import lombok.Builder;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
@@ -32,6 +33,7 @@ public abstract class BaseDTO implements Serializable {
 
     @NotNull(message = "Active status cannot be null")
     @JsonProperty("isActive")
+    @Builder.Default
     private Boolean isActive = Boolean.TRUE;
 
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
@@ -54,6 +56,7 @@ public abstract class BaseDTO implements Serializable {
     /**
      * Check if DTO represents an active entity
      */
+    @JsonIgnore
     public boolean isActive() {
         return Boolean.TRUE.equals(this.isActive);
     }
@@ -61,6 +64,7 @@ public abstract class BaseDTO implements Serializable {
     /**
      * Check if DTO represents an inactive entity
      */
+    @JsonIgnore
     public boolean isInactive() {
         return !isActive();
     }
@@ -68,6 +72,7 @@ public abstract class BaseDTO implements Serializable {
     /**
      * Check if this is a new entity (no ID assigned yet)
      */
+    @JsonIgnore
     public boolean isNew() {
         return this.id == null;
     }
@@ -75,6 +80,7 @@ public abstract class BaseDTO implements Serializable {
     /**
      * Check if this is an existing entity
      */
+    @JsonIgnore
     public boolean isExisting() {
         return this.id != null;
     }
@@ -125,6 +131,7 @@ public abstract class BaseDTO implements Serializable {
     /**
      * Get audit information as formatted string
      */
+    @JsonIgnore
     public String getAuditInfo() {
         return String.format("Created: %s, Updated: %s, Version: %s",
                 createdAt, updatedAt, version);
@@ -133,6 +140,7 @@ public abstract class BaseDTO implements Serializable {
     /**
      * Get a string representation of the DTO for logging
      */
+    @JsonIgnore
     public String toLogString() {
         return String.format("%s{id=%s, active=%s, version=%s}",
                 getClass().getSimpleName(), id, isActive, version);
@@ -141,6 +149,7 @@ public abstract class BaseDTO implements Serializable {
     /**
      * Get a brief summary suitable for display
      */
+    @JsonIgnore
     public String toDisplayString() {
         return String.format("%s #%s %s",
                 getClass().getSimpleName().replace("DTO", ""),

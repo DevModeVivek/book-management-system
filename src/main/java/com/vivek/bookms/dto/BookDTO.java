@@ -3,6 +3,7 @@ package com.vivek.bookms.dto;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.vivek.bookms.constants.AppConstants;
 import com.vivek.bookms.common.validation.ValidISBN;
 import com.vivek.bookms.dto.base.BaseDTO;
@@ -112,6 +113,7 @@ public class BookDTO extends BaseDTO {
     /**
      * Check if the book has a price set
      */
+    @JsonIgnore
     public boolean hasPrice() {
         return price != null && price.compareTo(BigDecimal.ZERO) > 0;
     }
@@ -119,6 +121,7 @@ public class BookDTO extends BaseDTO {
     /**
      * Check if the book has page count information
      */
+    @JsonIgnore
     public boolean hasPageCount() {
         return pageCount != null && pageCount > 0;
     }
@@ -126,6 +129,7 @@ public class BookDTO extends BaseDTO {
     /**
      * Get formatted price as string
      */
+    @JsonIgnore
     public String getFormattedPrice() {
         return hasPrice() ? String.format("$%.2f", price) : "Price not available";
     }
@@ -133,6 +137,7 @@ public class BookDTO extends BaseDTO {
     /**
      * Get book age in years from publication date
      */
+    @JsonIgnore
     public int getBookAgeInYears() {
         if (publishedDate == null) {
             return 0;
@@ -143,6 +148,7 @@ public class BookDTO extends BaseDTO {
     /**
      * Check if this book is newly published (within last 2 years)
      */
+    @JsonIgnore
     public boolean isNewlyPublished() {
         return getBookAgeInYears() <= 2;
     }
@@ -150,6 +156,7 @@ public class BookDTO extends BaseDTO {
     /**
      * Get a short summary for display
      */
+    @JsonIgnore
     public String getShortSummary() {
         return String.format("%s by %s (%s)", 
                 title != null ? title : "Unknown Title",

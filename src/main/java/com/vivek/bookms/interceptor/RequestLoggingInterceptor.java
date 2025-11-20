@@ -1,54 +1,80 @@
 package com.vivek.bookms.interceptor;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.time.LocalDateTime;
 
+/**
+ * Request logging interceptor for enhanced monitoring and debugging
+ * Logs incoming requests and their processing times
+ */
 @Component
+@Slf4j
 public class RequestLoggingInterceptor implements HandlerInterceptor {
     
-    private static final Logger logger = LoggerFactory.getLogger(RequestLoggingInterceptor.class);
+    private static final String START_TIME_ATTRIBUTE = "startTime";
     
     @Override
     public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) {
-        String requestId = generateRequestId();
-        request.setAttribute("requestId", requestId);
-        request.setAttribute("startTime", System.currentTimeMillis());
+        long startTime = System.currentTimeMillis();
+        request.setAttribute(START_TIME_ATTRIBUTE, startTime);
         
-        logger.info("Request ID: {} | {} {} | Remote Address: {} | User-Agent: {} | Start Time: {}", 
-                   requestId,
-                   request.getMethod(), 
-                   request.getRequestURI(),
-                   request.getRemoteAddr(),
-                   request.getHeader("User-Agent"),
-                   LocalDateTime.now());
+        log.info("Incoming {} request to: {} from IP: {}", 
+                request.getMethod(), 
+                request.getRequestURI(), 
+                getClientIpAddress(request));
+        
+        if (log.isDebugEnabled()) {
+            log.debug("Request parameters: {}", request.getQueryString());
+            log.debug("User-Agent: {}", request.getHeader("User-Agent"));
+        }
         
         return true;
     }
     
     @Override
-    public void afterCompletion(HttpServletRequest request, HttpServletResponse response, Object handler, Exception ex) {
-        String requestId = (String) request.getAttribute("requestId");
-        Long startTime = (Long) request.getAttribute("startTime");
-        long duration = System.currentTimeMillis() - startTime;
+    public void afterCompletion(HttpServletRequest request, HttpServletResponse response, 
+                               Object handler, Exception ex) {
         
-        logger.info("Request ID: {} | Response Status: {} | Duration: {}ms | Completed at: {}", 
-                   requestId,
-                   response.getStatus(),
-                   duration,
-                   LocalDateTime.now());
+        Object startTimeObj = request.getAttribute(START_TIME_ATTRIBUTE);
+        if (startTimeObj instanceof Long) {
+            long startTime = (Long) startTimeObj;
+            long endTime = System.currentTimeMillis();
+            long duration = endTime - startTime;
+            
+            log.info("Completed {} request to: {} - Status: {} - Duration: {}ms", 
+                    request.getMethod(), 
+                    request.getRequestURI(), 
+                    response.getStatus(), 
+                    duration);
+            
+            if (duration > 1000) {
+                log.warn("Slow request detected: {} took {}ms", request.getRequestURI(), duration);
+            }
+        }
         
         if (ex != null) {
-            logger.error("Request ID: {} | Exception occurred: {}", requestId, ex.getMessage(), ex);
+            log.error("Request failed with exception: {}", ex.getMessage(), ex);
         }
     }
     
-    private String generateRequestId() {
-        return "REQ-" + System.currentTimeMillis() + "-" + Thread.currentThread().getId();
+    /**
+     * Extract client IP address from request
+     */
+    private String getClientIpAddress(HttpServletRequest request) {
+        String xForwardedFor = request.getHeader("X-Forwarded-For");
+        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
+            return xForwardedFor.split(",")[0].trim();
+        }
+        
+        String xRealIp = request.getHeader("X-Real-IP");
+        if (xRealIp != null && !xRealIp.isEmpty()) {
+            return xRealIp;
+        }
+        
+        return request.getRemoteAddr();
     }
 }
