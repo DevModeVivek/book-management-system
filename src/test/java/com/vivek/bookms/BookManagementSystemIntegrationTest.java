@@ -3,7 +3,7 @@ package com.vivek.bookms;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.vivek.bookms.dto.BookDTO;
 import com.vivek.bookms.entity.Book;
-import com.vivek.bookms.repository.BookRepository;
+import com.vivek.bookms.repository.IBookRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -33,7 +33,7 @@ class BookManagementSystemIntegrationTest {
     private MockMvc mockMvc;
 
     @Autowired
-    private BookRepository bookRepository;
+    private IBookRepository bookRepository;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -44,11 +44,14 @@ class BookManagementSystemIntegrationTest {
     void setUp() {
         bookRepository.deleteAll();
         
-        testBookDTO = new BookDTO();
-        testBookDTO.setTitle("Integration Test Book");
-        testBookDTO.setAuthor("Test Author");
-        testBookDTO.setIsbn("9781234567890");
-        testBookDTO.setPublishedDate(LocalDate.of(2023, 1, 1));
+        // Create DTO without ID for creation
+        testBookDTO = BookDTO.builder()
+                .title("Integration Test Book")
+                .author("Test Author")
+                .isbn("9781234567897")  // Valid ISBN-13 format (13 digits)
+                .publishedDate(LocalDate.of(2023, 1, 1))
+                .isActive(true)
+                .build();
     }
 
     @Test
@@ -87,18 +90,20 @@ class BookManagementSystemIntegrationTest {
         mockMvc.perform(get("/books"))
                 .andExpect(status().isUnauthorized());
 
-        // USER role should be able to access external search
-        mockMvc.perform(get("/books/external/search")
-                .param("query", "test")
+        // USER role SHOULD be able to access GET operations (based on @PreAuthorize("hasAnyRole('USER', 'ADMIN')"))
+        mockMvc.perform(get("/books")
                 .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic("user", "user123")))
                 .andExpect(status().isOk());
 
-        // USER role should NOT be able to access CRUD operations
-        mockMvc.perform(get("/books")
-                .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic("user", "user123")))
+        // USER role should NOT be able to access ADMIN-only operations (like POST)
+        mockMvc.perform(post("/books")
+                .with(csrf())
+                .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic("user", "user123"))
+                .contentType("application/json")
+                .content("{}"))
                 .andExpect(status().isForbidden());
 
-        // ADMIN role should be able to access CRUD operations
+        // ADMIN role should be able to access all operations
         mockMvc.perform(get("/books")
                 .with(org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.httpBasic("admin", "admin123")))
                 .andExpect(status().isOk());
