@@ -1,6 +1,6 @@
 package com.vivek.bookms.controller;
 
-import com.vivek.bookms.core.Messages;
+import com.vivek.bookms.constants.Messages;
 import com.vivek.bookms.dto.BookDTO;
 import com.vivek.bookms.service.IBookService;
 import com.vivek.bookms.service.IGoogleBooksService;
@@ -43,7 +43,7 @@ public class BookController extends BaseController<BookDTO, Long> {
         logRequest("getAllBooks");
         try {
             List<BookDTO> books = bookService.getAll();
-            return handleListResponse(books, Messages.BOOKS_RETRIEVED_SUCCESS, Messages.BOOKS_NOT_FOUND);
+            return handleListResponse(books, Messages.BOOKS_RETRIEVED_SUCCESSFULLY, Messages.NO_BOOKS_FOUND);
         } catch (Exception e) {
             logError("getAllBooks", e);
             throw e;
@@ -59,7 +59,7 @@ public class BookController extends BaseController<BookDTO, Long> {
         logRequest("getAllBooksWithPagination", pageable);
         try {
             Page<BookDTO> books = bookService.getAll(pageable);
-            return handlePageResponse(books, Messages.BOOKS_RETRIEVED_SUCCESS, Messages.BOOKS_NOT_FOUND);
+            return handlePageResponse(books, Messages.BOOKS_RETRIEVED_SUCCESSFULLY, Messages.NO_BOOKS_FOUND);
         } catch (Exception e) {
             logError("getAllBooksWithPagination", e);
             throw e;
@@ -78,7 +78,7 @@ public class BookController extends BaseController<BookDTO, Long> {
         
         try {
             Optional<BookDTO> book = bookService.getById(id);
-            return handleOptionalResponse(book, Messages.BOOK_RETRIEVED_SUCCESS, 
+            return handleOptionalResponse(book, Messages.BOOK_RETRIEVED_SUCCESSFULLY, 
                     String.format(Messages.BOOK_NOT_FOUND, id));
         } catch (Exception e) {
             logError("getBookById", e);
@@ -105,7 +105,7 @@ public class BookController extends BaseController<BookDTO, Long> {
         try {
             BookDTO createdBook = bookService.create(bookDTO);
             logSuccess("createBook", "Created book with ID: " + createdBook.getId());
-            return handleCreationResponse(createdBook, Messages.BOOK_CREATED_SUCCESS);
+            return handleCreationResponse(createdBook, Messages.BOOK_CREATED_SUCCESSFULLY);
         } catch (Exception e) {
             logError("createBook", e);
             throw e;
@@ -134,7 +134,7 @@ public class BookController extends BaseController<BookDTO, Long> {
         try {
             BookDTO updatedBook = bookService.update(id, bookDTO);
             logSuccess("updateBook", "Updated book with ID: " + id);
-            return handleUpdateResponse(updatedBook, Messages.BOOK_UPDATED_SUCCESS);
+            return handleUpdateResponse(updatedBook, Messages.BOOK_UPDATED_SUCCESSFULLY);
         } catch (Exception e) {
             logError("updateBook", e);
             throw e;
@@ -154,7 +154,7 @@ public class BookController extends BaseController<BookDTO, Long> {
         try {
             bookService.softDelete(id);
             logSuccess("deleteBook", "Soft deleted book with ID: " + id);
-            return handleDeletionResponse(Messages.BOOK_DELETED_SUCCESS);
+            return handleDeletionResponse(Messages.BOOK_DELETED_SUCCESSFULLY);
         } catch (Exception e) {
             logError("deleteBook", e);
             throw e;
@@ -212,8 +212,8 @@ public class BookController extends BaseController<BookDTO, Long> {
         
         try {
             List<BookDTO> books = bookService.searchBooks(query.trim());
-            return handleListResponse(books, Messages.SEARCH_COMPLETED_SUCCESS, 
-                    String.format(Messages.NO_BOOKS_FOUND_FOR_QUERY, query));
+            return handleListResponse(books, "Search completed successfully", 
+                    "No books found for query: " + query);
         } catch (Exception e) {
             logError("searchBooks", e);
             throw e;
@@ -232,8 +232,8 @@ public class BookController extends BaseController<BookDTO, Long> {
         
         try {
             Page<BookDTO> books = bookService.searchBooks(query.trim(), pageable);
-            return handlePageResponse(books, Messages.SEARCH_COMPLETED_SUCCESS, 
-                    String.format(Messages.NO_BOOKS_FOUND_FOR_QUERY, query));
+            return handlePageResponse(books, "Search completed successfully", 
+                    "No books found for query: " + query);
         } catch (Exception e) {
             logError("searchBooksWithPagination", e);
             throw e;
