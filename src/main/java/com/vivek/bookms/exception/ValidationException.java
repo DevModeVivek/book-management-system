@@ -1,89 +1,166 @@
 package com.vivek.bookms.exception;
 
-import lombok.Getter;
+import com.vivek.bookms.constants.ErrorCodes;
 import java.util.Map;
 import java.util.HashMap;
 
 /**
- * Exception for validation-related errors with Lombok optimization
+ * Enhanced validation exception extending DomainException
+ * Eliminates code repetition and provides consistent validation error handling
  */
-@Getter
-public class ValidationException extends RuntimeException {
+public class ValidationException extends DomainException {
+    
     private final Map<String, String> fieldErrors;
-    private final String errorContext;
-
-    public ValidationException(String message) {
-        super(message);
-        this.fieldErrors = new HashMap<>();
-        this.errorContext = "GENERAL_ERROR";
+    
+    private ValidationException(Builder builder) {
+        super(builder);
+        this.fieldErrors = new HashMap<>(builder.fieldErrors);
     }
-
-    public ValidationException(String message, Throwable cause) {
-        super(message, cause);
-        this.fieldErrors = new HashMap<>();
-        this.errorContext = "GENERAL_ERROR";
+    
+    /**
+     * Get field-specific validation errors
+     */
+    public Map<String, String> getFieldErrors() {
+        return new HashMap<>(fieldErrors);
     }
-
-    public ValidationException(String message, Map<String, String> fieldErrors) {
-        super(message);
-        this.fieldErrors = fieldErrors != null ? new HashMap<>(fieldErrors) : new HashMap<>();
-        this.errorContext = "GENERAL_ERROR";
+    
+    /**
+     * Get error context from parent class
+     */
+    public String getErrorContext() {
+        return getErrorCategory();
     }
-
-    public ValidationException(String message, String errorContext) {
-        super(message);
-        this.fieldErrors = new HashMap<>();
-        this.errorContext = errorContext != null ? errorContext : "GENERAL_ERROR";
-    }
-
-    public ValidationException(String message, Map<String, String> fieldErrors, String errorContext) {
-        super(message);
-        this.fieldErrors = fieldErrors != null ? new HashMap<>(fieldErrors) : new HashMap<>();
-        this.errorContext = errorContext != null ? errorContext : "GENERAL_ERROR";
-    }
-
-    public ValidationException withContext(String context) {
-        return new ValidationException(this.getMessage(), this.fieldErrors, context);
-    }
-
-    public void addFieldError(String field, String error) {
-        this.fieldErrors.put(field, error);
-    }
-
+    
+    /**
+     * Check if exception has field-specific errors
+     */
     public boolean hasFieldErrors() {
         return !fieldErrors.isEmpty();
     }
-
+    
+    /**
+     * Add field error to existing exception
+     */
+    public ValidationException addFieldError(String field, String error) {
+        this.fieldErrors.put(field, error);
+        return this;
+    }
+    
+    /**
+     * Create validation exception for required field
+     */
+    public static ValidationException requiredField(String fieldName) {
+        return builder()
+            .withErrorCode(ErrorCodes.Validation.REQUIRED_FIELD)
+            .withUserMessage(String.format("Field '%s' is required", fieldName))
+            .withTechnicalMessage(String.format("Required field missing: %s", fieldName))
+            .addFieldError(fieldName, "This field is required")
+            .build();
+    }
+    
+    /**
+     * Create validation exception for invalid format
+     */
+    public static ValidationException invalidFormat(String fieldName, String expectedFormat) {
+        return builder()
+            .withErrorCode(ErrorCodes.Validation.INVALID_FORMAT)
+            .withUserMessage(String.format("Field '%s' has invalid format", fieldName))
+            .withTechnicalMessage(String.format("Field '%s' expected format: %s", fieldName, expectedFormat))
+            .addFieldError(fieldName, String.format("Expected format: %s", expectedFormat))
+            .build();
+    }
+    
+    /**
+     * Create validation exception for constraint violation
+     */
+    public static ValidationException constraintViolation(String message) {
+        return builder()
+            .withErrorCode(ErrorCodes.Validation.CONSTRAINT_VIOLATION)
+            .withUserMessage("Data validation failed")
+            .withTechnicalMessage(message)
+            .build();
+    }
+    
+    /**
+     * Create validation exception for multiple field errors
+     */
+    public static ValidationException multipleErrors(Map<String, String> fieldErrors) {
+        Builder builder = builder()
+            .withErrorCode(ErrorCodes.Validation.GENERAL_ERROR)
+            .withUserMessage("Multiple validation errors occurred")
+            .withTechnicalMessage(String.format("Validation failed for %d fields", fieldErrors.size()));
+        
+        fieldErrors.forEach(builder::addFieldError);
+        return builder.build();
+    }
+    
+    /**
+     * Get builder instance
+     */
     public static Builder builder() {
         return new Builder();
     }
-
-    public static class Builder {
+    
+    /**
+     * Builder for ValidationException with field error support
+     */
+    public static class Builder extends DomainException.Builder<Builder> {
         private final Map<String, String> fieldErrors = new HashMap<>();
-        private String message = "Validation failed";
-        private String context = "GENERAL_ERROR";
-
+        
+        public Builder() {
+            withErrorCode(ErrorCodes.Validation.GENERAL_ERROR);
+            withCategory(ErrorCodes.Categories.VALIDATION);
+            withUserMessage("Validation failed");
+            withTechnicalMessage("One or more validation errors occurred");
+        }
+        
+        @Override
+        protected Builder self() {
+            return this;
+        }
+        
+        /**
+         * Add field-specific validation error
+         */
         public Builder addFieldError(String field, String error) {
-            fieldErrors.put(field, error);
+            this.fieldErrors.put(field, error);
             return this;
         }
-
-        public Builder withMessage(String message) {
-            this.message = message;
+        
+        /**
+         * Add multiple field errors
+         */
+        public Builder addFieldErrors(Map<String, String> errors) {
+            if (errors != null) {
+                this.fieldErrors.putAll(errors);
+            }
             return this;
         }
-
-        public Builder withContext(String context) {
-            this.context = context;
-            return this;
-        }
-
+        
+        /**
+         * Check if any field errors have been added
+         */
         public boolean hasErrors() {
             return !fieldErrors.isEmpty();
         }
-
+        
+        /**
+         * Get current field errors count
+         */
+        public int getErrorCount() {
+            return fieldErrors.size();
+        }
+        
+        @Override
         public ValidationException build() {
-            return new ValidationException(message, fieldErrors, context);
+            // Update technical message with field error count if there are field errors
+            if (!fieldErrors.isEmpty()) {
+                withTechnicalMessage(String.format("Validation failed for %d field(s): %s", 
+                    fieldErrors.size(), String.join(", ", fieldErrors.keySet())));
+                withContext("fieldErrorCount", fieldErrors.size());
+                withContext("failedFields", fieldErrors.keySet());
+            }
+            return new ValidationException(this);
         }
     }
 }

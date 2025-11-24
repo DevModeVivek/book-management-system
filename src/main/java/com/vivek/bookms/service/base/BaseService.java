@@ -169,8 +169,7 @@ public abstract class BaseService<E extends BaseEntity, D extends BaseDTO, ID> {
             dto.validateForUpdate();
             
             E existingEntity = repository.findByIdAndIsActiveTrue((Long) id)
-                    .orElseThrow(() -> new BookNotFoundException(
-                            String.format(AppConstants.ErrorMessages.BOOK_NOT_FOUND_BY_ID, id)));
+                    .orElseThrow(() -> BookNotFoundException.forId((Long) id));
             
             // Perform pre-update validation
             performPreUpdateValidation(existingEntity, dto);
@@ -215,8 +214,7 @@ public abstract class BaseService<E extends BaseEntity, D extends BaseDTO, ID> {
             ValidationUtils.requireNonNull(id, "ID");
             
             if (!repository.existsByIdAndIsActiveTrue((Long) id)) {
-                throw new BookNotFoundException(
-                        String.format(AppConstants.ErrorMessages.RESOURCE_NOT_FOUND + " with id: %s", id));
+                throw BookNotFoundException.forId((Long) id);
             }
             
             repository.deleteById((Long) id);
@@ -248,8 +246,7 @@ public abstract class BaseService<E extends BaseEntity, D extends BaseDTO, ID> {
             ValidationUtils.requireNonNull(id, "ID");
             
             if (!repository.existsByIdAndIsActiveTrue((Long) id)) {
-                throw new BookNotFoundException(
-                        String.format(AppConstants.ErrorMessages.RESOURCE_NOT_FOUND + " with id: %s", id));
+                throw BookNotFoundException.forId((Long) id);
             }
             
             repository.softDeleteById((Long) id);

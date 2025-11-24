@@ -1,6 +1,7 @@
 package com.vivek.bookms.service;
 
 import com.vivek.bookms.constants.AppConstants;
+import com.vivek.bookms.constants.ErrorCodes;
 import com.vivek.bookms.dto.BookDTO;
 import com.vivek.bookms.entity.Book;
 import com.vivek.bookms.exception.ValidationException;
@@ -332,8 +333,12 @@ public class BookService extends BaseService<Book, BookDTO, Long> implements IBo
         
         // Business-specific validation for creation
         if (ValidationUtils.isNotBlank(dto.getIsbn()) && existsByIsbn(dto.getIsbn())) {
-            throw new ValidationException(
-                    String.format(AppConstants.ErrorMessages.DUPLICATE_ISBN, dto.getIsbn()));
+            throw ValidationException.builder()
+                    .withErrorCode(ErrorCodes.Book.DUPLICATE_ISBN)
+                    .withUserMessage(String.format(AppConstants.ErrorMessages.DUPLICATE_ISBN, dto.getIsbn()))
+                    .addFieldError("isbn", "ISBN already exists")
+                    .withContext("isbn", dto.getIsbn())
+                    .build();
         }
         
         log.debug(AppConstants.Logging.SERVICE_LOG_PATTERN,
@@ -348,8 +353,13 @@ public class BookService extends BaseService<Book, BookDTO, Long> implements IBo
         
         // Business-specific validation for update
         if (ValidationUtils.isNotBlank(dto.getIsbn()) && existsByIsbnAndIdNot(dto.getIsbn(), id)) {
-            throw new ValidationException(
-                    String.format(AppConstants.ErrorMessages.DUPLICATE_ISBN, dto.getIsbn()));
+            throw ValidationException.builder()
+                    .withErrorCode(ErrorCodes.Book.DUPLICATE_ISBN)
+                    .withUserMessage(String.format(AppConstants.ErrorMessages.DUPLICATE_ISBN, dto.getIsbn()))
+                    .addFieldError("isbn", "ISBN already exists")
+                    .withContext("isbn", dto.getIsbn())
+                    .withContext("excludeId", id)
+                    .build();
         }
         
         log.debug(AppConstants.Logging.SERVICE_LOG_PATTERN,

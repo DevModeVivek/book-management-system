@@ -2,11 +2,13 @@ package com.vivek.bookms.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.lang.NonNull;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 /**
- * Web configuration class providing CORS settings
+ * Web configuration for CORS settings
+ * RestTemplate bean is already configured in AppConfig.java
  */
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
@@ -28,20 +30,21 @@ public class WebConfig implements WebMvcConfigurer {
 
     /**
      * CORS configuration for cross-origin requests
+     * Note: RestTemplate bean is already configured in AppConfig.java
      */
     @Override
-    public void addCorsMappings(CorsRegistry registry) {
+    public void addCorsMappings(@NonNull CorsRegistry registry) {
         registry.addMapping("/api/**")
-                .allowedOrigins(allowedOrigins)
-                .allowedMethods(allowedMethods)
-                .allowedHeaders(allowedHeaders)
+                .allowedOrigins(allowedOrigins != null ? allowedOrigins : new String[]{"*"})
+                .allowedMethods(allowedMethods != null ? allowedMethods : new String[]{"*"})
+                .allowedHeaders(allowedHeaders != null ? allowedHeaders : new String[]{"*"})
                 .allowCredentials(allowCredentials)
                 .maxAge(maxAge);
 
         registry.addMapping("/books/**")
-                .allowedOrigins(allowedOrigins)
-                .allowedMethods(allowedMethods)
-                .allowedHeaders(allowedHeaders)
+                .allowedOrigins(allowedOrigins != null ? allowedOrigins : new String[]{"*"})
+                .allowedMethods(allowedMethods != null ? allowedMethods : new String[]{"*"})
+                .allowedHeaders(allowedHeaders != null ? allowedHeaders : new String[]{"*"})
                 .allowCredentials(allowCredentials)
                 .maxAge(maxAge);
     }

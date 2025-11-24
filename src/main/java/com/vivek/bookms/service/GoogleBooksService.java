@@ -67,12 +67,12 @@ public class GoogleBooksService implements IGoogleBooksService {
             if (response.getStatusCode().is2xxSuccessful()) {
                 return parseGoogleBooksResponse(response.getBody());
             } else {
-                throw new ExternalApiException("Failed to fetch data from Google Books API");
+                throw ExternalApiException.googleBooksError("Failed to fetch data from Google Books API");
             }
             
         } catch (Exception e) {
             log.error("Error calling Google Books API: {}", e.getMessage(), e);
-            throw new ExternalApiException("Error calling Google Books API: " + e.getMessage());
+            throw ExternalApiException.googleBooksError("Error calling Google Books API: " + e.getMessage(), e);
         }
     }
     
@@ -100,7 +100,7 @@ public class GoogleBooksService implements IGoogleBooksService {
             
         } catch (Exception e) {
             log.error("Error parsing Google Books API response: {}", e.getMessage(), e);
-            throw new ExternalApiException("Error parsing Google Books API response");
+            throw ExternalApiException.googleBooksError("Error parsing Google Books API response");
         }
         
         return books;

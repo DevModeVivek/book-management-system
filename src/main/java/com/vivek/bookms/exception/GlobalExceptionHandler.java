@@ -1,34 +1,40 @@
 package com.vivek.bookms.exception;
 
+import com.vivek.bookms.constants.ErrorCodes;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.InsufficientAuthenticationException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 
+import javax.persistence.EntityNotFoundException;
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.ConstraintViolation;
 import javax.validation.ConstraintViolationException;
+import java.sql.SQLException;
 import java.time.LocalDateTime;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
- * Enhanced Global Exception Handler with comprehensive error handling
- * Implements structured error responses with proper logging and context
+ * Enhanced Global Exception Handler with centralized error codes and reduced repetition
+ * Uses refactored exception hierarchy and centralized constants
  */
 @RestControllerAdvice
 @Slf4j
@@ -36,62 +42,119 @@ public class GlobalExceptionHandler {
 
     // ============= DOMAIN EXCEPTIONS =============
     
-    @ExceptionHandler(BookNotFoundException.class)
-    public ResponseEntity<ErrorResponse> handleBookNotFoundException(
-            BookNotFoundException ex, HttpServletRequest request) {
+    @ExceptionHandler(DomainException.class)
+    public ResponseEntity<ErrorResponse> handleDomainException(
+            DomainException ex, HttpServletRequest request) {
         
-        log.warn("BookNotFoundException: {} - Path: {}", ex.getMessage(), request.getRequestURI());
+        log.warn("DomainException [{}]: {} - Path: {}", 
+                ex.getErrorCode(), ex.getLocalizedMessage(), request.getRequestURI());
         
         ErrorResponse errorResponse = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
-                .status(HttpStatus.NOT_FOUND.value())
-                .error("BOOK_NOT_FOUND")
-                .message(ex.getMessage())
+                .timestamp(ex.getTimestamp())
+                .status(getHttpStatusForDomainException(ex).value())
+                .error(ex.getErrorCode())
+                .message(ex.getLocalizedMessage())
+                .technicalMessage(ex.getTechnicalDetails())
                 .path(request.getRequestURI())
                 .traceId(generateTraceId())
-                .contextData(Map.of("errorCode", ex.getErrorCode()))
+                .contextData(ex.getContextData())
                 .build();
         
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+        HttpHeaders headers = createStandardHeaders(ex.getErrorCode(), errorResponse.getTraceId());
+        return ResponseEntity.status(getHttpStatusForDomainException(ex))
+                .headers(headers)
+                .body(errorResponse);
     }
     
     @ExceptionHandler(ValidationException.class)
     public ResponseEntity<ValidationErrorResponse> handleValidationException(
             ValidationException ex, HttpServletRequest request) {
         
-        log.warn("ValidationException: {} - Path: {}", ex.getMessage(), request.getRequestURI());
+        log.warn("ValidationException [{}]: {} - Path: {}", 
+                ex.getErrorCode(), ex.getLocalizedMessage(), request.getRequestURI());
         
         ValidationErrorResponse errorResponse = ValidationErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
+                .timestamp(ex.getTimestamp())
                 .status(HttpStatus.BAD_REQUEST.value())
-                .error("VALIDATION_ERROR")
-                .message(ex.getMessage())
+                .error(ex.getErrorCode())
+                .message(ex.getLocalizedMessage())
+                .technicalMessage(ex.getTechnicalDetails())
                 .path(request.getRequestURI())
                 .traceId(generateTraceId())
                 .validationErrors(ex.getFieldErrors())
-                .contextData(Map.of("errorContext", ex.getErrorContext()))
+                .contextData(ex.getContextData())
                 .build();
         
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
-    }
-    
-    @ExceptionHandler(ExternalApiException.class)
-    public ResponseEntity<ErrorResponse> handleExternalApiException(
-            ExternalApiException ex, HttpServletRequest request) {
+        HttpHeaders headers = createStandardHeaders(ex.getErrorCode(), errorResponse.getTraceId());
+        headers.set("X-Validation-Error-Count", String.valueOf(ex.getFieldErrors().size()));
         
-        log.error("ExternalApiException: {} - Path: {}", ex.getMessage(), request.getRequestURI(), ex);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).headers(headers).body(errorResponse);
+    }
+
+    // ============= DATABASE EXCEPTIONS =============
+    
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ErrorResponse> handleDataIntegrityViolation(
+            DataIntegrityViolationException ex, HttpServletRequest request) {
+        
+        log.error("DataIntegrityViolationException: {} - Path: {}", ex.getMessage(), request.getRequestURI());
+        
+        String errorCode = determineDataIntegrityErrorCode(ex);
+        String userMessage = getUserMessageForDataIntegrityError(ex);
         
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .timestamp(LocalDateTime.now())
-                .status(HttpStatus.SERVICE_UNAVAILABLE.value())
-                .error("EXTERNAL_API_ERROR")
-                .message("External service temporarily unavailable")
+                .status(HttpStatus.CONFLICT.value())
+                .error(errorCode)
+                .message(userMessage)
+                .technicalMessage(ex.getMessage())
                 .path(request.getRequestURI())
                 .traceId(generateTraceId())
-                .contextData(Map.of("service", "external-api"))
+                .contextData(Map.of("constraintType", "data_integrity"))
                 .build();
         
-        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(errorResponse);
+        HttpHeaders headers = createStandardHeaders(errorCode, errorResponse.getTraceId());
+        return ResponseEntity.status(HttpStatus.CONFLICT).headers(headers).body(errorResponse);
+    }
+
+    // ============= AUTHENTICATION & AUTHORIZATION EXCEPTIONS =============
+    
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ErrorResponse> handleAuthenticationException(
+            AuthenticationException ex, HttpServletRequest request) {
+        
+        log.warn("AuthenticationException: {} - Path: {}", ex.getMessage(), request.getRequestURI());
+        
+        ErrorResponse errorResponse = createSecurityErrorResponse(
+                ErrorCodes.Security.AUTHENTICATION_REQUIRED,
+                "Authentication required",
+                "Authentication failed: " + ex.getMessage(),
+                request.getRequestURI()
+        );
+        
+        HttpHeaders headers = createSecurityHeaders(ErrorCodes.Security.AUTHENTICATION_REQUIRED, 
+                errorResponse.getTraceId());
+        
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).headers(headers).body(errorResponse);
+    }
+    
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> handleAccessDenied(
+            AccessDeniedException ex, HttpServletRequest request) {
+        
+        log.warn("Access denied for request: {} - {}", request.getRequestURI(), ex.getMessage());
+        
+        ErrorResponse errorResponse = createSecurityErrorResponse(
+                ErrorCodes.Security.ACCESS_DENIED,
+                "Access denied",
+                "Insufficient privileges: " + ex.getMessage(),
+                request.getRequestURI()
+        );
+        
+        HttpHeaders headers = createStandardHeaders(ErrorCodes.Security.ACCESS_DENIED, 
+                errorResponse.getTraceId());
+        
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).headers(headers).body(errorResponse);
     }
 
     // ============= SPRING FRAMEWORK EXCEPTIONS =============
@@ -102,7 +165,7 @@ public class GlobalExceptionHandler {
         
         log.warn("Validation failed for request: {}", request.getRequestURI());
         
-        Map<String, String> validationErrors = ex.getBindingResult()
+        Map<String, String> fieldErrors = ex.getBindingResult()
                 .getFieldErrors()
                 .stream()
                 .collect(Collectors.toMap(
@@ -110,263 +173,145 @@ public class GlobalExceptionHandler {
                     error -> error.getDefaultMessage() != null 
                         ? error.getDefaultMessage() 
                         : "Invalid value",
-                    (existing, replacement) -> existing
+                    (existing, replacement) -> existing + "; " + replacement
                 ));
         
         ValidationErrorResponse errorResponse = ValidationErrorResponse.builder()
                 .timestamp(LocalDateTime.now())
                 .status(HttpStatus.BAD_REQUEST.value())
-                .error("VALIDATION_FAILED")
-                .message("Validation failed for request")
+                .error(ErrorCodes.Validation.GENERAL_ERROR)
+                .message("Request validation failed")
+                .technicalMessage(String.format("Validation failed for %d fields", fieldErrors.size()))
                 .path(request.getRequestURI())
                 .traceId(generateTraceId())
-                .validationErrors(validationErrors)
-                .contextData(Map.of("bindingErrors", ex.getBindingResult().getErrorCount()))
-                .build();
-        
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
-    }
-    
-    @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<ValidationErrorResponse> handleConstraintViolation(
-            ConstraintViolationException ex, HttpServletRequest request) {
-        
-        log.warn("Constraint violation for request: {}", request.getRequestURI());
-        
-        Map<String, String> validationErrors = ex.getConstraintViolations()
-                .stream()
-                .collect(Collectors.toMap(
-                    violation -> violation.getPropertyPath().toString(),
-                    ConstraintViolation::getMessage,
-                    (existing, replacement) -> existing
-                ));
-        
-        ValidationErrorResponse errorResponse = ValidationErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
-                .status(HttpStatus.BAD_REQUEST.value())
-                .error("CONSTRAINT_VIOLATION")
-                .message("Constraint validation failed")
-                .path(request.getRequestURI())
-                .traceId(generateTraceId())
-                .validationErrors(validationErrors)
-                .contextData(Map.of("violationCount", ex.getConstraintViolations().size()))
-                .build();
-        
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
-    }
-    
-    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ResponseEntity<ErrorResponse> handleTypeMismatch(
-            MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
-        
-        log.warn("Type mismatch for parameter '{}': expected {}, got '{}'", 
-                ex.getName(), ex.getRequiredType(), ex.getValue());
-        
-        String message = String.format("Invalid value '%s' for parameter '%s'. Expected type: %s", 
-                ex.getValue(), ex.getName(), 
-                ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "unknown");
-        
-        ErrorResponse errorResponse = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
-                .status(HttpStatus.BAD_REQUEST.value())
-                .error("TYPE_MISMATCH")
-                .message(message)
-                .path(request.getRequestURI())
-                .traceId(generateTraceId())
+                .validationErrors(fieldErrors)
                 .contextData(Map.of(
-                    "parameter", ex.getName(),
-                    "providedValue", String.valueOf(ex.getValue()),
-                    "expectedType", ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "unknown"
+                    "fieldCount", ex.getBindingResult().getFieldErrorCount(),
+                    "globalErrorCount", ex.getBindingResult().getGlobalErrorCount()
                 ))
                 .build();
         
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
-    }
-    
-    @ExceptionHandler(MissingServletRequestParameterException.class)
-    public ResponseEntity<ErrorResponse> handleMissingParameter(
-            MissingServletRequestParameterException ex, HttpServletRequest request) {
+        HttpHeaders headers = createStandardHeaders(ErrorCodes.Validation.GENERAL_ERROR, 
+                errorResponse.getTraceId());
+        headers.set("X-Validation-Error-Count", String.valueOf(fieldErrors.size()));
         
-        log.warn("Missing required parameter '{}' for request: {}", ex.getParameterName(), request.getRequestURI());
-        
-        String message = String.format("Required parameter '%s' of type '%s' is missing", 
-                ex.getParameterName(), ex.getParameterType());
-        
-        ErrorResponse errorResponse = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
-                .status(HttpStatus.BAD_REQUEST.value())
-                .error("MISSING_PARAMETER")
-                .message(message)
-                .path(request.getRequestURI())
-                .traceId(generateTraceId())
-                .contextData(Map.of(
-                    "parameterName", ex.getParameterName(),
-                    "parameterType", ex.getParameterType()
-                ))
-                .build();
-        
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
-    }
-
-    @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<ErrorResponse> handleHttpMessageNotReadable(
-            HttpMessageNotReadableException ex, HttpServletRequest request) {
-        
-        log.warn("Malformed JSON request for: {}", request.getRequestURI());
-        
-        ErrorResponse errorResponse = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
-                .status(HttpStatus.BAD_REQUEST.value())
-                .error("MALFORMED_JSON")
-                .message("Malformed JSON request")
-                .path(request.getRequestURI())
-                .traceId(generateTraceId())
-                .contextData(Map.of("cause", "Invalid JSON format"))
-                .build();
-        
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
-    }
-
-    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
-    public ResponseEntity<ErrorResponse> handleMethodNotSupported(
-            HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
-        
-        log.warn("Method '{}' not supported for: {}", ex.getMethod(), request.getRequestURI());
-        
-        ErrorResponse errorResponse = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
-                .status(HttpStatus.METHOD_NOT_ALLOWED.value())
-                .error("METHOD_NOT_ALLOWED")
-                .message(String.format("Method '%s' not supported for this endpoint", ex.getMethod()))
-                .path(request.getRequestURI())
-                .traceId(generateTraceId())
-                .contextData(Map.of(
-                    "method", ex.getMethod(),
-                    "supportedMethods", ex.getSupportedHttpMethods()
-                ))
-                .build();
-        
-        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(errorResponse);
-    }
-
-    @ExceptionHandler(NoHandlerFoundException.class)
-    public ResponseEntity<ErrorResponse> handleNoHandlerFound(
-            NoHandlerFoundException ex, HttpServletRequest request) {
-        
-        log.warn("No handler found for {} {}", ex.getHttpMethod(), ex.getRequestURL());
-        
-        ErrorResponse errorResponse = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
-                .status(HttpStatus.NOT_FOUND.value())
-                .error("ENDPOINT_NOT_FOUND")
-                .message(String.format("No endpoint found for %s %s", ex.getHttpMethod(), ex.getRequestURL()))
-                .path(request.getRequestURI())
-                .traceId(generateTraceId())
-                .contextData(Map.of(
-                    "method", ex.getHttpMethod(),
-                    "requestURL", ex.getRequestURL()
-                ))
-                .build();
-        
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
-    }
-
-    // ============= SECURITY EXCEPTIONS =============
-    
-    @ExceptionHandler(AccessDeniedException.class)
-    public ResponseEntity<ErrorResponse> handleAccessDenied(
-            AccessDeniedException ex, HttpServletRequest request) {
-        
-        log.warn("Access denied for request: {} - {}", request.getRequestURI(), ex.getMessage());
-        
-        ErrorResponse errorResponse = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
-                .status(HttpStatus.FORBIDDEN.value())
-                .error("ACCESS_DENIED")
-                .message("Access denied")
-                .path(request.getRequestURI())
-                .traceId(generateTraceId())
-                .contextData(Map.of("securityViolation", true))
-                .build();
-        
-        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
-    }
-
-    // ============= GENERIC EXCEPTIONS =============
-    
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ErrorResponse> handleIllegalArgument(
-            IllegalArgumentException ex, HttpServletRequest request) {
-        
-        log.warn("Invalid argument for request {}: {}", request.getRequestURI(), ex.getMessage());
-        
-        ErrorResponse errorResponse = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
-                .status(HttpStatus.BAD_REQUEST.value())
-                .error("INVALID_ARGUMENT")
-                .message(ex.getMessage() != null ? ex.getMessage() : "Invalid request")
-                .path(request.getRequestURI())
-                .traceId(generateTraceId())
-                .contextData(Map.of())
-                .build();
-        
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
-    }
-    
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<ErrorResponse> handleRuntimeException(
-            RuntimeException ex, HttpServletRequest request) {
-        
-        log.error("Runtime exception for request {}: {}", request.getRequestURI(), ex.getMessage(), ex);
-        
-        ErrorResponse errorResponse = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
-                .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
-                .error("RUNTIME_ERROR")
-                .message(ex.getMessage() != null ? ex.getMessage() : "Internal server error")
-                .path(request.getRequestURI())
-                .traceId(generateTraceId())
-                .contextData(Map.of("exceptionType", ex.getClass().getSimpleName()))
-                .build();
-        
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
-    }
-    
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleGenericException(
-            Exception ex, HttpServletRequest request) {
-        
-        String traceId = generateTraceId();
-        log.error("Unexpected exception [{}] for request {}: {}", 
-                traceId, request.getRequestURI(), ex.getMessage(), ex);
-        
-        ErrorResponse errorResponse = ErrorResponse.builder()
-                .timestamp(LocalDateTime.now())
-                .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
-                .error("INTERNAL_SERVER_ERROR")
-                .message("Internal server error")
-                .path(request.getRequestURI())
-                .traceId(traceId)
-                .contextData(Map.of("exceptionType", ex.getClass().getSimpleName()))
-                .build();
-        
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).headers(headers).body(errorResponse);
     }
 
     // ============= UTILITY METHODS =============
     
     /**
-     * Generate a unique trace ID for error tracking
+     * Determine appropriate HTTP status for domain exceptions
+     */
+    private HttpStatus getHttpStatusForDomainException(DomainException ex) {
+        String errorCode = ex.getErrorCode();
+        
+        if (errorCode.contains("NOT_FOUND")) return HttpStatus.NOT_FOUND;
+        if (errorCode.contains("ALREADY_EXISTS")) return HttpStatus.CONFLICT;
+        if (errorCode.contains("VALIDATION")) return HttpStatus.BAD_REQUEST;
+        if (errorCode.contains("EXTERNAL_API")) return HttpStatus.SERVICE_UNAVAILABLE;
+        if (errorCode.contains("SECURITY") || errorCode.contains("ACCESS")) return HttpStatus.FORBIDDEN;
+        
+        return HttpStatus.INTERNAL_SERVER_ERROR;
+    }
+    
+    /**
+     * Create standardized headers for error responses
+     */
+    private HttpHeaders createStandardHeaders(String errorCode, String traceId) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("X-Error-Code", errorCode);
+        headers.set("X-Trace-Id", traceId);
+        headers.set("X-Error-Category", getErrorCategory(errorCode));
+        return headers;
+    }
+    
+    /**
+     * Create security-specific headers
+     */
+    private HttpHeaders createSecurityHeaders(String errorCode, String traceId) {
+        HttpHeaders headers = createStandardHeaders(errorCode, traceId);
+        headers.set("WWW-Authenticate", "Basic realm=\"Book Management System\"");
+        return headers;
+    }
+    
+    /**
+     * Create standardized security error response
+     */
+    private ErrorResponse createSecurityErrorResponse(String errorCode, String userMessage, 
+                                                    String technicalMessage, String path) {
+        return ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(getHttpStatusForErrorCode(errorCode).value())
+                .error(errorCode)
+                .message(userMessage)
+                .technicalMessage(technicalMessage)
+                .path(path)
+                .traceId(generateTraceId())
+                .contextData(Map.of("securityViolation", true, "category", ErrorCodes.Categories.SECURITY))
+                .build();
+    }
+    
+    /**
+     * Determine data integrity error code based on exception message
+     */
+    private String determineDataIntegrityErrorCode(DataIntegrityViolationException ex) {
+        String message = ex.getMessage();
+        if (message != null) {
+            if (message.contains("isbn")) return ErrorCodes.Book.DUPLICATE_ISBN;
+            if (message.contains("unique")) return ErrorCodes.Database.DUPLICATE_KEY;
+        }
+        return ErrorCodes.Database.CONSTRAINT_VIOLATION;
+    }
+    
+    /**
+     * Get user-friendly message for data integrity errors
+     */
+    private String getUserMessageForDataIntegrityError(DataIntegrityViolationException ex) {
+        String message = ex.getMessage();
+        if (message != null) {
+            if (message.contains("isbn")) return "A book with this ISBN already exists";
+            if (message.contains("unique")) return "This record already exists";
+        }
+        return "Data constraint violation";
+    }
+    
+    /**
+     * Get HTTP status for error code
+     */
+    private HttpStatus getHttpStatusForErrorCode(String errorCode) {
+        if (errorCode.contains("NOT_FOUND")) return HttpStatus.NOT_FOUND;
+        if (errorCode.contains("VALIDATION") || errorCode.contains("INVALID")) return HttpStatus.BAD_REQUEST;
+        if (errorCode.contains("AUTH") || errorCode.contains("CREDENTIALS")) return HttpStatus.UNAUTHORIZED;
+        if (errorCode.contains("ACCESS") || errorCode.contains("FORBIDDEN")) return HttpStatus.FORBIDDEN;
+        if (errorCode.contains("DUPLICATE") || errorCode.contains("CONFLICT")) return HttpStatus.CONFLICT;
+        if (errorCode.contains("EXTERNAL") || errorCode.contains("UNAVAILABLE")) return HttpStatus.SERVICE_UNAVAILABLE;
+        return HttpStatus.INTERNAL_SERVER_ERROR;
+    }
+    
+    /**
+     * Extract error category from error code
+     */
+    private String getErrorCategory(String errorCode) {
+        if (errorCode.startsWith("BOOK_")) return ErrorCodes.Categories.DOMAIN;
+        if (errorCode.startsWith("VALIDATION_")) return ErrorCodes.Categories.VALIDATION;
+        if (errorCode.startsWith("EXTERNAL_")) return ErrorCodes.Categories.EXTERNAL_API;
+        if (errorCode.startsWith("SECURITY_")) return ErrorCodes.Categories.SECURITY;
+        if (errorCode.startsWith("DATABASE_")) return ErrorCodes.Categories.DATABASE;
+        return ErrorCodes.Categories.SYSTEM;
+    }
+    
+    /**
+     * Generate enhanced trace ID
      */
     private String generateTraceId() {
-        return UUID.randomUUID().toString().substring(0, 8);
+        String timestamp = String.valueOf(System.currentTimeMillis() % 100000);
+        String uuid = UUID.randomUUID().toString().substring(0, 8);
+        return timestamp + "-" + uuid;
     }
 
     // ============= RESPONSE DTOs =============
     
-    /**
-     * Enhanced error response with trace ID and context
-     */
     @Data
     @AllArgsConstructor
     @lombok.Builder
@@ -375,14 +320,15 @@ public class GlobalExceptionHandler {
         private int status;
         private String error;
         private String message;
+        private String technicalMessage;
         private String path;
         private String traceId;
         private Map<String, Object> contextData;
+        
+        @lombok.Builder.Default
+        private boolean success = false;
     }
     
-    /**
-     * Enhanced validation error response
-     */
     @Data
     @AllArgsConstructor
     @lombok.Builder
@@ -391,9 +337,13 @@ public class GlobalExceptionHandler {
         private int status;
         private String error;
         private String message;
+        private String technicalMessage;
         private String path;
         private String traceId;
         private Map<String, String> validationErrors;
         private Map<String, Object> contextData;
+        
+        @lombok.Builder.Default
+        private boolean success = false;
     }
 }

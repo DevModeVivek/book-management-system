@@ -1,6 +1,7 @@
 package com.vivek.bookms.common.validation;
 
 import com.vivek.bookms.constants.AppConstants;
+import com.vivek.bookms.constants.ErrorCodes;
 import com.vivek.bookms.exception.ValidationException;
 import lombok.extern.slf4j.Slf4j;
 
@@ -38,7 +39,7 @@ public final class ValidationUtils {
             log.error(AppConstants.Logging.ERROR_LOG_PATTERN, 
                     AppConstants.Logging.CATEGORY_VALIDATION, "requireNonNull", 
                     "NULL_VALUE", message);
-            throw new ValidationException(message);
+            throw ValidationException.requiredField(fieldName);
         }
         return obj;
     }
@@ -68,7 +69,7 @@ public final class ValidationUtils {
             log.error(AppConstants.Logging.ERROR_LOG_PATTERN,
                     AppConstants.Logging.CATEGORY_VALIDATION, "requireNonBlank",
                     "BLANK_VALUE", message);
-            throw new ValidationException(message);
+            throw ValidationException.requiredField(fieldName);
         }
         return str.trim();
     }
@@ -98,14 +99,22 @@ public final class ValidationUtils {
                 log.error(AppConstants.Logging.ERROR_LOG_PATTERN,
                         AppConstants.Logging.CATEGORY_VALIDATION, "validateStringLength",
                         "LENGTH_TOO_SHORT", message);
-                throw new ValidationException(message);
+                throw ValidationException.builder()
+                    .withErrorCode(ErrorCodes.Validation.TOO_SHORT)
+                    .withUserMessage(message)
+                    .addFieldError(fieldName, String.format("Minimum length is %d characters", minLength))
+                    .build();
             }
             if (length > maxLength) {
                 String message = String.format(AppConstants.ErrorMessages.FIELD_TOO_LONG, fieldName, maxLength);
                 log.error(AppConstants.Logging.ERROR_LOG_PATTERN,
                         AppConstants.Logging.CATEGORY_VALIDATION, "validateStringLength",
                         "LENGTH_TOO_LONG", message);
-                throw new ValidationException(message);
+                throw ValidationException.builder()
+                    .withErrorCode(ErrorCodes.Validation.TOO_LONG)
+                    .withUserMessage(message)
+                    .addFieldError(fieldName, String.format("Maximum length is %d characters", maxLength))
+                    .build();
             }
         }
     }
@@ -119,7 +128,7 @@ public final class ValidationUtils {
             log.error(AppConstants.Logging.ERROR_LOG_PATTERN,
                     AppConstants.Logging.CATEGORY_VALIDATION, "validatePattern",
                     "INVALID_PATTERN", message);
-            throw new ValidationException(message);
+            throw ValidationException.invalidFormat(fieldName, "Valid characters only");
         }
     }
 
@@ -141,7 +150,7 @@ public final class ValidationUtils {
             log.error(AppConstants.Logging.ERROR_LOG_PATTERN,
                     AppConstants.Logging.CATEGORY_VALIDATION, "requireNonEmpty",
                     "EMPTY_COLLECTION", message);
-            throw new ValidationException(message);
+            throw ValidationException.requiredField(fieldName);
         }
         return collection;
     }
@@ -163,7 +172,11 @@ public final class ValidationUtils {
                 log.error(AppConstants.Logging.ERROR_LOG_PATTERN,
                         AppConstants.Logging.CATEGORY_VALIDATION, "validateRange",
                         "OUT_OF_RANGE", message);
-                throw new ValidationException(message);
+                throw ValidationException.builder()
+                    .withErrorCode(ErrorCodes.Validation.OUT_OF_RANGE)
+                    .withUserMessage(message)
+                    .addFieldError(fieldName, String.format("Value must be between %s and %s", min, max))
+                    .build();
             }
         }
     }
@@ -177,7 +190,11 @@ public final class ValidationUtils {
             log.error(AppConstants.Logging.ERROR_LOG_PATTERN,
                     AppConstants.Logging.CATEGORY_VALIDATION, "validatePositive",
                     "NOT_POSITIVE", message);
-            throw new ValidationException(message);
+            throw ValidationException.builder()
+                .withErrorCode(ErrorCodes.Validation.OUT_OF_RANGE)
+                .withUserMessage(message)
+                .addFieldError(fieldName, "Value must be positive")
+                .build();
         }
     }
 
@@ -229,7 +246,7 @@ public final class ValidationUtils {
                 log.error(AppConstants.Logging.ERROR_LOG_PATTERN,
                         AppConstants.Logging.CATEGORY_VALIDATION, "validateIsbn",
                         "INVALID_ISBN", message);
-                throw new ValidationException(message);
+                throw ValidationException.invalidFormat("isbn", "ISBN-10 or ISBN-13");
             }
         }
     }
@@ -260,7 +277,12 @@ public final class ValidationUtils {
                 log.error(AppConstants.Logging.ERROR_LOG_PATTERN,
                         AppConstants.Logging.CATEGORY_VALIDATION, "validatePrice",
                         "INVALID_PRICE", message);
-                throw new ValidationException(message);
+                throw ValidationException.builder()
+                    .withErrorCode(ErrorCodes.Validation.OUT_OF_RANGE)
+                    .withUserMessage(message)
+                    .addFieldError("price", String.format("Price must be between %s and %s", 
+                        AppConstants.Validation.PRICE_MIN, AppConstants.Validation.PRICE_MAX))
+                    .build();
             }
         }
     }
@@ -274,7 +296,11 @@ public final class ValidationUtils {
             log.error(AppConstants.Logging.ERROR_LOG_PATTERN,
                     AppConstants.Logging.CATEGORY_VALIDATION, "validatePublicationDate",
                     "FUTURE_DATE", message);
-            throw new ValidationException(message);
+            throw ValidationException.builder()
+                .withErrorCode(ErrorCodes.Validation.OUT_OF_RANGE)
+                .withUserMessage(message)
+                .addFieldError("publishedDate", "Date cannot be in the future")
+                .build();
         }
     }
 
@@ -289,7 +315,11 @@ public final class ValidationUtils {
             log.error(AppConstants.Logging.ERROR_LOG_PATTERN,
                     AppConstants.Logging.CATEGORY_VALIDATION, "validatePaginationParams",
                     "NEGATIVE_PAGE", message);
-            throw new ValidationException(message);
+            throw ValidationException.builder()
+                .withErrorCode(ErrorCodes.Validation.OUT_OF_RANGE)
+                .withUserMessage(message)
+                .addFieldError("page", "Page number must be non-negative")
+                .build();
         }
         
         if (size < AppConstants.Validation.MIN_PAGE_SIZE) {
@@ -297,7 +327,11 @@ public final class ValidationUtils {
             log.error(AppConstants.Logging.ERROR_LOG_PATTERN,
                     AppConstants.Logging.CATEGORY_VALIDATION, "validatePaginationParams",
                     "INVALID_PAGE_SIZE", message);
-            throw new ValidationException(message);
+            throw ValidationException.builder()
+                .withErrorCode(ErrorCodes.Validation.OUT_OF_RANGE)
+                .withUserMessage(message)
+                .addFieldError("size", String.format("Minimum size is %d", AppConstants.Validation.MIN_PAGE_SIZE))
+                .build();
         }
         
         if (size > AppConstants.Validation.MAX_PAGE_SIZE) {
@@ -305,7 +339,11 @@ public final class ValidationUtils {
             log.error(AppConstants.Logging.ERROR_LOG_PATTERN,
                     AppConstants.Logging.CATEGORY_VALIDATION, "validatePaginationParams",
                     "PAGE_SIZE_TOO_LARGE", message);
-            throw new ValidationException(message);
+            throw ValidationException.builder()
+                .withErrorCode(ErrorCodes.Validation.OUT_OF_RANGE)
+                .withUserMessage(message)
+                .addFieldError("size", String.format("Maximum size is %d", AppConstants.Validation.MAX_PAGE_SIZE))
+                .build();
         }
     }
 
@@ -319,7 +357,7 @@ public final class ValidationUtils {
             log.error(AppConstants.Logging.ERROR_LOG_PATTERN,
                     AppConstants.Logging.CATEGORY_VALIDATION, "require",
                     "CONDITION_FAILED", message);
-            throw new ValidationException(message);
+            throw ValidationException.constraintViolation(message);
         }
     }
 
