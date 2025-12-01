@@ -7,6 +7,7 @@ import com.vivek.commons.exception.ExternalApiException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
@@ -33,18 +34,21 @@ public class GoogleBooksService implements IGoogleBooksService {
     private final ObjectMapper objectMapper;
     
     @Override
+    @Cacheable(value = "external-books", key = "'title:' + #title")
     public List<BookDTO> searchBooksByTitle(String title) {
         log.info("Searching Google Books API for title: {}", title);
         return searchBooks("intitle:" + title);
     }
     
     @Override
+    @Cacheable(value = "external-books", key = "'author:' + #author")
     public List<BookDTO> searchBooksByAuthor(String author) {
         log.info("Searching Google Books API for author: {}", author);
         return searchBooks("inauthor:" + author);
     }
     
     @Override
+    @Cacheable(value = "external-books", key = "'search:' + #query")
     public List<BookDTO> searchBooks(String query) {
         try {
             log.info("Making request to Google Books API with query: {}", query);

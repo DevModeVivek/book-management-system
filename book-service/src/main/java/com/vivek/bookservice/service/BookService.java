@@ -14,6 +14,10 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 
 import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
@@ -41,6 +45,7 @@ public class BookService extends BaseService<Book, BookDTO, Long> implements IBo
     
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "book-search", key = "#query")
     public List<BookDTO> searchBooks(String query) {
         log.debug(AppConstants.Logging.SERVICE_LOG_PATTERN,
                 AppConstants.Logging.CATEGORY_SERVICE,
@@ -83,6 +88,7 @@ public class BookService extends BaseService<Book, BookDTO, Long> implements IBo
     
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "book-search", key = "#query + ':page:' + #pageable.pageNumber + ':' + #pageable.pageSize")
     public Page<BookDTO> searchBooks(String query, @NotNull Pageable pageable) {
         log.debug(AppConstants.Logging.SERVICE_LOG_PATTERN,
                 AppConstants.Logging.CATEGORY_SERVICE,
@@ -127,6 +133,7 @@ public class BookService extends BaseService<Book, BookDTO, Long> implements IBo
     
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "book-search", key = "'title:' + #title")
     public List<BookDTO> findByTitle(String title) {
         log.debug(AppConstants.Logging.SERVICE_LOG_PATTERN,
                 AppConstants.Logging.CATEGORY_SERVICE,
@@ -157,6 +164,7 @@ public class BookService extends BaseService<Book, BookDTO, Long> implements IBo
     
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "book-search", key = "'author:' + #author")
     public List<BookDTO> findByAuthor(String author) {
         log.debug(AppConstants.Logging.SERVICE_LOG_PATTERN,
                 AppConstants.Logging.CATEGORY_SERVICE,
@@ -187,6 +195,7 @@ public class BookService extends BaseService<Book, BookDTO, Long> implements IBo
     
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "book-by-isbn", key = "#isbn")
     public Optional<BookDTO> findByIsbn(String isbn) {
         log.debug(AppConstants.Logging.SERVICE_LOG_PATTERN,
                 AppConstants.Logging.CATEGORY_SERVICE,
@@ -224,6 +233,7 @@ public class BookService extends BaseService<Book, BookDTO, Long> implements IBo
     
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "book-search", key = "'genre:' + #genre")
     public List<BookDTO> findByGenre(String genre) {
         log.debug(AppConstants.Logging.SERVICE_LOG_PATTERN,
                 AppConstants.Logging.CATEGORY_SERVICE,
@@ -254,6 +264,7 @@ public class BookService extends BaseService<Book, BookDTO, Long> implements IBo
     
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "book-search", key = "'publisher:' + #publisher")
     public List<BookDTO> findByPublisher(String publisher) {
         log.debug(AppConstants.Logging.SERVICE_LOG_PATTERN,
                 AppConstants.Logging.CATEGORY_SERVICE,
@@ -396,31 +407,59 @@ public class BookService extends BaseService<Book, BookDTO, Long> implements IBo
     
     @Override
     @Transactional
+    @CachePut(value = "book-by-id", key = "#result.id")
+    @CacheEvict(value = {"books", "book-search"}, allEntries = true)
     public BookDTO create(@Valid @NotNull BookDTO bookDTO) {
         return super.create(bookDTO);
     }
     
     @Override
     @Transactional
+    @CachePut(value = "book-by-id", key = "#id")
+    @CacheEvict(value = {"books", "book-search"}, allEntries = true)
     public BookDTO update(@NotNull Long id, @Valid @NotNull BookDTO bookDTO) {
         return super.update(id, bookDTO);
     }
     
     @Override
     @Transactional(readOnly = true)
+    @Cacheable(value = "book-by-id", key = "#id")
     public Optional<BookDTO> getById(@NotNull Long id) {
         return super.getById(id);
     }
     
     @Override
     @Transactional
+    @Caching(evict = {
+        @CacheEvict(value = "book-by-id", key = "#id"),
+        @CacheEvict(value = {"books", "book-search"}, allEntries = true)
+    })
     public void softDelete(@NotNull Long id) {
         super.softDelete(id);
     }
     
     @Override
     @Transactional
+    @CachePut(value = "book-by-id", key = "#id")
+    @CacheEvict(value = {"books", "book-search"}, allEntries = true)
     public void restore(@NotNull Long id) {
         super.restore(id);
+    }
+    
+    // Cache management methods for monitoring and control
+    
+    @CacheEvict(value = {"books", "book-search", "book-by-id", "book-by-isbn"}, allEntries = true)
+    public void clearAllCaches() {
+        log.info("Clearing all book-related caches");
+    }
+    
+    @CacheEvict(value = "books", allEntries = true)
+    public void clearBooksCache() {
+        log.info("Clearing books cache");
+    }
+    
+    @CacheEvict(value = "book-search", allEntries = true)
+    public void clearSearchCache() {
+        log.info("Clearing book search cache");
     }
 }

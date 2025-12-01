@@ -26,7 +26,15 @@ subprojects {
         implementation 'org.springframework.boot:spring-boot-starter-web'
         implementation 'org.springframework.boot:spring-boot-starter-validation'
         implementation 'org.springframework.boot:spring-boot-starter-actuator'
+        
+        // Redis Cache Dependencies - NEW FOR PHASE 2
         implementation 'org.springframework.boot:spring-boot-starter-cache'
+        implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+        implementation 'org.apache.commons:commons-pool2'
+        
+        // Jackson JSR310 Module - FIX FOR PHASE 2
+        implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+        implementation 'com.fasterxml.jackson.core:jackson-databind'
         
         // Documentation
         implementation 'org.springdoc:springdoc-openapi-ui:1.6.15'

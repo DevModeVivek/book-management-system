@@ -97,4 +97,21 @@ public interface IBookService extends ICrudService<BookDTO, Long> {
      * @return true if exists, false otherwise
      */
     boolean existsByIsbnAndIdNot(String isbn, Long excludeId);
+    
+    // ============= CACHE MANAGEMENT OPERATIONS - NEW FOR PHASE 2 =============
+    
+    /**
+     * Clear all book-related caches
+     */
+    void clearAllCaches();
+    
+    /**
+     * Clear books cache
+     */
+    void clearBooksCache();
+    
+    /**
+     * Clear search cache
+     */
+    void clearSearchCache();
 }
