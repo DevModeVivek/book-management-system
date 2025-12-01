@@ -29,6 +29,7 @@ import javax.validation.ConstraintViolationException;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -49,9 +50,10 @@ public class GlobalExceptionHandler {
         log.warn("DomainException [{}]: {} - Path: {}", 
                 ex.getErrorCode(), ex.getLocalizedMessage(), request.getRequestURI());
         
+        HttpStatus status = getHttpStatusForDomainException(ex);
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .timestamp(ex.getTimestamp())
-                .status(getHttpStatusForDomainException(ex).value())
+                .status(status.value())
                 .error(ex.getErrorCode())
                 .message(ex.getLocalizedMessage())
                 .technicalMessage(ex.getTechnicalDetails())
@@ -61,7 +63,7 @@ public class GlobalExceptionHandler {
                 .build();
         
         HttpHeaders headers = createStandardHeaders(ex.getErrorCode(), errorResponse.getTraceId());
-        return ResponseEntity.status(getHttpStatusForDomainException(ex))
+        return ResponseEntity.status(status)
                 .headers(headers)
                 .body(errorResponse);
     }
@@ -117,6 +119,48 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).headers(headers).body(errorResponse);
     }
 
+    @ExceptionHandler(SQLException.class)
+    public ResponseEntity<ErrorResponse> handleSQLException(
+            SQLException ex, HttpServletRequest request) {
+        
+        log.error("SQLException: {} - Path: {}", ex.getMessage(), request.getRequestURI());
+        
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
+                .error(ErrorCodes.Database.SQL_ERROR)
+                .message("Database operation failed")
+                .technicalMessage("SQL Error: " + ex.getMessage())
+                .path(request.getRequestURI())
+                .traceId(generateTraceId())
+                .contextData(Map.of("sqlState", ex.getSQLState(), "errorCode", ex.getErrorCode()))
+                .build();
+        
+        HttpHeaders headers = createStandardHeaders(ErrorCodes.Database.SQL_ERROR, errorResponse.getTraceId());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).headers(headers).body(errorResponse);
+    }
+
+    @ExceptionHandler(EntityNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleEntityNotFound(
+            EntityNotFoundException ex, HttpServletRequest request) {
+        
+        log.warn("EntityNotFoundException: {} - Path: {}", ex.getMessage(), request.getRequestURI());
+        
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.NOT_FOUND.value())
+                .error(ErrorCodes.Database.ENTITY_NOT_FOUND)
+                .message("Requested resource not found")
+                .technicalMessage(ex.getMessage())
+                .path(request.getRequestURI())
+                .traceId(generateTraceId())
+                .contextData(Map.of("entityType", "unknown"))
+                .build();
+        
+        HttpHeaders headers = createStandardHeaders(ErrorCodes.Database.ENTITY_NOT_FOUND, errorResponse.getTraceId());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).headers(headers).body(errorResponse);
+    }
+
     // ============= AUTHENTICATION & AUTHORIZATION EXCEPTIONS =============
     
     @ExceptionHandler(AuthenticationException.class)
@@ -133,6 +177,44 @@ public class GlobalExceptionHandler {
         );
         
         HttpHeaders headers = createSecurityHeaders(ErrorCodes.Security.AUTHENTICATION_REQUIRED, 
+                errorResponse.getTraceId());
+        
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).headers(headers).body(errorResponse);
+    }
+
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<ErrorResponse> handleBadCredentials(
+            BadCredentialsException ex, HttpServletRequest request) {
+        
+        log.warn("BadCredentialsException: {} - Path: {}", ex.getMessage(), request.getRequestURI());
+        
+        ErrorResponse errorResponse = createSecurityErrorResponse(
+                ErrorCodes.Security.INVALID_CREDENTIALS,
+                "Invalid credentials provided",
+                "Bad credentials: " + ex.getMessage(),
+                request.getRequestURI()
+        );
+        
+        HttpHeaders headers = createSecurityHeaders(ErrorCodes.Security.INVALID_CREDENTIALS, 
+                errorResponse.getTraceId());
+        
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).headers(headers).body(errorResponse);
+    }
+
+    @ExceptionHandler(InsufficientAuthenticationException.class)
+    public ResponseEntity<ErrorResponse> handleInsufficientAuthentication(
+            InsufficientAuthenticationException ex, HttpServletRequest request) {
+        
+        log.warn("InsufficientAuthenticationException: {} - Path: {}", ex.getMessage(), request.getRequestURI());
+        
+        ErrorResponse errorResponse = createSecurityErrorResponse(
+                ErrorCodes.Security.INSUFFICIENT_AUTHENTICATION,
+                "Insufficient authentication",
+                "Insufficient authentication: " + ex.getMessage(),
+                request.getRequestURI()
+        );
+        
+        HttpHeaders headers = createSecurityHeaders(ErrorCodes.Security.INSUFFICIENT_AUTHENTICATION, 
                 errorResponse.getTraceId());
         
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).headers(headers).body(errorResponse);
@@ -196,6 +278,243 @@ public class GlobalExceptionHandler {
         headers.set("X-Validation-Error-Count", String.valueOf(fieldErrors.size()));
         
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).headers(headers).body(errorResponse);
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ValidationErrorResponse> handleConstraintViolation(
+            ConstraintViolationException ex, HttpServletRequest request) {
+        
+        log.warn("Constraint violation for request: {} - {}", request.getRequestURI(), ex.getMessage());
+        
+        Map<String, String> violations = ex.getConstraintViolations()
+                .stream()
+                .collect(Collectors.toMap(
+                    violation -> violation.getPropertyPath().toString(),
+                    ConstraintViolation::getMessage,
+                    (existing, replacement) -> existing + "; " + replacement
+                ));
+        
+        ValidationErrorResponse errorResponse = ValidationErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error(ErrorCodes.Validation.CONSTRAINT_VIOLATION)
+                .message("Constraint validation failed")
+                .technicalMessage(String.format("Constraint violation for %d properties", violations.size()))
+                .path(request.getRequestURI())
+                .traceId(generateTraceId())
+                .validationErrors(violations)
+                .contextData(Map.of("violationCount", violations.size()))
+                .build();
+        
+        HttpHeaders headers = createStandardHeaders(ErrorCodes.Validation.CONSTRAINT_VIOLATION, 
+                errorResponse.getTraceId());
+        headers.set("X-Validation-Error-Count", String.valueOf(violations.size()));
+        
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).headers(headers).body(errorResponse);
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ErrorResponse> handleHttpMessageNotReadable(
+            HttpMessageNotReadableException ex, HttpServletRequest request) {
+        
+        log.warn("HttpMessageNotReadableException for request: {} - {}", request.getRequestURI(), ex.getMessage());
+        
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error(ErrorCodes.Validation.INVALID_FORMAT)
+                .message("Invalid request format")
+                .technicalMessage("Request body is not readable: " + ex.getMessage())
+                .path(request.getRequestURI())
+                .traceId(generateTraceId())
+                .contextData(Map.of("requestMethod", request.getMethod()))
+                .build();
+        
+        HttpHeaders headers = createStandardHeaders(ErrorCodes.Validation.INVALID_FORMAT, errorResponse.getTraceId());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).headers(headers).body(errorResponse);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleMethodArgumentTypeMismatch(
+            MethodArgumentTypeMismatchException ex, HttpServletRequest request) {
+        
+        log.warn("MethodArgumentTypeMismatchException for request: {} - Parameter: {}", 
+                request.getRequestURI(), ex.getName());
+        
+        Class<?> requiredType = ex.getRequiredType();
+        String expectedTypeName = requiredType != null ? requiredType.getSimpleName() : "unknown";
+        Object providedValue = ex.getValue();
+        String providedValueStr = providedValue != null ? providedValue.toString() : "null";
+        
+        String message = String.format("Parameter '%s' has invalid type. Expected: %s", 
+                ex.getName(), expectedTypeName);
+        
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error(ErrorCodes.Validation.INVALID_FORMAT)
+                .message("Invalid parameter type")
+                .technicalMessage(message)
+                .path(request.getRequestURI())
+                .traceId(generateTraceId())
+                .contextData(Map.of(
+                    "parameter", ex.getName(),
+                    "providedValue", providedValueStr,
+                    "expectedType", expectedTypeName
+                ))
+                .build();
+        
+        HttpHeaders headers = createStandardHeaders(ErrorCodes.Validation.INVALID_FORMAT, errorResponse.getTraceId());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).headers(headers).body(errorResponse);
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ErrorResponse> handleMissingServletRequestParameter(
+            MissingServletRequestParameterException ex, HttpServletRequest request) {
+        
+        log.warn("MissingServletRequestParameterException for request: {} - Parameter: {}", 
+                request.getRequestURI(), ex.getParameterName());
+        
+        String message = String.format("Required parameter '%s' is missing", ex.getParameterName());
+        
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error(ErrorCodes.Validation.REQUIRED_FIELD)
+                .message("Required parameter missing")
+                .technicalMessage(message)
+                .path(request.getRequestURI())
+                .traceId(generateTraceId())
+                .contextData(Map.of(
+                    "missingParameter", ex.getParameterName(),
+                    "parameterType", ex.getParameterType()
+                ))
+                .build();
+        
+        HttpHeaders headers = createStandardHeaders(ErrorCodes.Validation.REQUIRED_FIELD, errorResponse.getTraceId());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).headers(headers).body(errorResponse);
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ErrorResponse> handleHttpRequestMethodNotSupported(
+            HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
+        
+        log.warn("HttpRequestMethodNotSupportedException for request: {} - Method: {}", 
+                request.getRequestURI(), ex.getMethod());
+        
+        String supportedMethods = ex.getSupportedMethods() != null ? 
+                String.join(", ", ex.getSupportedMethods()) : "none";
+        
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.METHOD_NOT_ALLOWED.value())
+                .error(ErrorCodes.System.METHOD_NOT_ALLOWED)
+                .message("HTTP method not supported")
+                .technicalMessage(String.format("Method '%s' not supported. Supported methods: %s", 
+                        ex.getMethod(), supportedMethods))
+                .path(request.getRequestURI())
+                .traceId(generateTraceId())
+                .contextData(Map.of(
+                    "method", ex.getMethod(),
+                    "supportedMethods", supportedMethods
+                ))
+                .build();
+        
+        HttpHeaders headers = createStandardHeaders(ErrorCodes.System.METHOD_NOT_ALLOWED, errorResponse.getTraceId());
+        headers.set("Allow", supportedMethods);
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).headers(headers).body(errorResponse);
+    }
+
+    @ExceptionHandler(NoHandlerFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNoHandlerFound(
+            NoHandlerFoundException ex, HttpServletRequest request) {
+        
+        log.warn("NoHandlerFoundException for request: {} - {}", request.getRequestURI(), ex.getMessage());
+        
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.NOT_FOUND.value())
+                .error(ErrorCodes.System.ENDPOINT_NOT_FOUND)
+                .message("Endpoint not found")
+                .technicalMessage(String.format("No handler found for %s %s", ex.getHttpMethod(), ex.getRequestURL()))
+                .path(request.getRequestURI())
+                .traceId(generateTraceId())
+                .contextData(Map.of(
+                    "httpMethod", ex.getHttpMethod(),
+                    "requestURL", ex.getRequestURL()
+                ))
+                .build();
+        
+        HttpHeaders headers = createStandardHeaders(ErrorCodes.System.ENDPOINT_NOT_FOUND, errorResponse.getTraceId());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).headers(headers).body(errorResponse);
+    }
+
+    // ============= GENERAL EXCEPTIONS =============
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgument(
+            IllegalArgumentException ex, HttpServletRequest request) {
+        
+        log.warn("IllegalArgumentException for request: {} - {}", request.getRequestURI(), ex.getMessage());
+        
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .error(ErrorCodes.Validation.INVALID_ARGUMENT)
+                .message("Invalid argument provided")
+                .technicalMessage(ex.getMessage())
+                .path(request.getRequestURI())
+                .traceId(generateTraceId())
+                .contextData(new HashMap<>())
+                .build();
+        
+        HttpHeaders headers = createStandardHeaders(ErrorCodes.Validation.INVALID_ARGUMENT, errorResponse.getTraceId());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).headers(headers).body(errorResponse);
+    }
+
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<ErrorResponse> handleRuntimeException(
+            RuntimeException ex, HttpServletRequest request) {
+        
+        log.error("RuntimeException for request: {} - {}", request.getRequestURI(), ex.getMessage(), ex);
+        
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
+                .error(ErrorCodes.System.RUNTIME_ERROR)
+                .message("An unexpected error occurred")
+                .technicalMessage("Runtime error: " + ex.getMessage())
+                .path(request.getRequestURI())
+                .traceId(generateTraceId())
+                .contextData(Map.of("exceptionType", ex.getClass().getSimpleName()))
+                .build();
+        
+        HttpHeaders headers = createStandardHeaders(ErrorCodes.System.RUNTIME_ERROR, errorResponse.getTraceId());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).headers(headers).body(errorResponse);
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleGenericException(
+            Exception ex, HttpServletRequest request) {
+        
+        log.error("Unhandled Exception for request: {} - {}", request.getRequestURI(), ex.getMessage(), ex);
+        
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
+                .error(ErrorCodes.System.INTERNAL_ERROR)
+                .message("Internal server error")
+                .technicalMessage("Unexpected error: " + ex.getMessage())
+                .path(request.getRequestURI())
+                .traceId(generateTraceId())
+                .contextData(Map.of(
+                    "exceptionType", ex.getClass().getSimpleName(),
+                    "exceptionPackage", ex.getClass().getPackage().getName()
+                ))
+                .build();
+        
+        HttpHeaders headers = createStandardHeaders(ErrorCodes.System.INTERNAL_ERROR, errorResponse.getTraceId());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).headers(headers).body(errorResponse);
     }
 
     // ============= UTILITY METHODS =============

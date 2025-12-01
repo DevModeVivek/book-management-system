@@ -45,6 +45,7 @@ public final class ErrorCodes {
         public static final String TOO_SHORT = "VALIDATION_TOO_SHORT";
         public static final String INVALID_PATTERN = "VALIDATION_INVALID_PATTERN";
         public static final String CONSTRAINT_VIOLATION = "VALIDATION_CONSTRAINT_VIOLATION";
+        public static final String INVALID_ARGUMENT = "VALIDATION_INVALID_ARGUMENT";
         
         private Validation() {}
     }
@@ -67,6 +68,7 @@ public final class ErrorCodes {
         public static final String INSUFFICIENT_PRIVILEGES = "SECURITY_INSUFFICIENT_PRIVILEGES";
         public static final String AUTHENTICATION_REQUIRED = "SECURITY_AUTH_REQUIRED";
         public static final String INVALID_CREDENTIALS = "SECURITY_INVALID_CREDENTIALS";
+        public static final String INSUFFICIENT_AUTHENTICATION = "SECURITY_INSUFFICIENT_AUTH";
         public static final String SESSION_EXPIRED = "SECURITY_SESSION_EXPIRED";
         
         private Security() {}
@@ -79,6 +81,8 @@ public final class ErrorCodes {
         public static final String DUPLICATE_KEY = "DATABASE_DUPLICATE_KEY";
         public static final String TRANSACTION_FAILED = "DATABASE_TRANSACTION_FAILED";
         public static final String QUERY_FAILED = "DATABASE_QUERY_FAILED";
+        public static final String SQL_ERROR = "DATABASE_SQL_ERROR";
+        public static final String ENTITY_NOT_FOUND = "DATABASE_ENTITY_NOT_FOUND";
         
         private Database() {}
     }
@@ -89,6 +93,9 @@ public final class ErrorCodes {
         public static final String CONFIGURATION_ERROR = "SYSTEM_CONFIG_ERROR";
         public static final String RESOURCE_NOT_AVAILABLE = "SYSTEM_RESOURCE_UNAVAILABLE";
         public static final String OPERATION_NOT_SUPPORTED = "SYSTEM_OPERATION_NOT_SUPPORTED";
+        public static final String METHOD_NOT_ALLOWED = "SYSTEM_METHOD_NOT_ALLOWED";
+        public static final String ENDPOINT_NOT_FOUND = "SYSTEM_ENDPOINT_NOT_FOUND";
+        public static final String RUNTIME_ERROR = "SYSTEM_RUNTIME_ERROR";
         
         private System() {}
     }
