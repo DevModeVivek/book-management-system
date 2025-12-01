@@ -7,13 +7,17 @@ import com.vivek.bookservice.service.IBookService;
 import com.vivek.bookservice.service.IGoogleBooksService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
@@ -32,7 +36,7 @@ import java.util.Optional;
 @RequestMapping("/books")
 @Slf4j
 @CrossOrigin(origins = "*")
-@Tag(name = "Book Management", description = "Operations for managing books")
+@Tag(name = "Book Management", description = "APIs for managing books in the system")
 @RequiredArgsConstructor
 public class BookController extends BaseController<BookDTO, Long> {
 
@@ -71,8 +75,11 @@ public class BookController extends BaseController<BookDTO, Long> {
     }
 
     @Operation(summary = "Get book by ID", description = "Retrieve a specific book by its ID")
-    @ApiResponse(responseCode = "200", description = "Book found")
-    @ApiResponse(responseCode = "404", description = "Book not found")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Book found", 
+                        content = @Content(schema = @Schema(implementation = BookDTO.class))),
+            @ApiResponse(responseCode = "404", description = "Book not found")
+    })
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<Map<String, Object>> getBookById(
@@ -91,8 +98,11 @@ public class BookController extends BaseController<BookDTO, Long> {
     }
 
     @Operation(summary = "Create a new book", description = "Add a new book to the database")
-    @ApiResponse(responseCode = "201", description = "Book created successfully")
-    @ApiResponse(responseCode = "400", description = "Invalid input data")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Book created successfully", 
+                        content = @Content(schema = @Schema(implementation = BookDTO.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid input data")
+    })
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> createBook(
@@ -117,9 +127,12 @@ public class BookController extends BaseController<BookDTO, Long> {
     }
 
     @Operation(summary = "Update an existing book", description = "Update book details by ID")
-    @ApiResponse(responseCode = "200", description = "Book updated successfully")
-    @ApiResponse(responseCode = "404", description = "Book not found")
-    @ApiResponse(responseCode = "400", description = "Invalid input data")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Book updated successfully", 
+                        content = @Content(schema = @Schema(implementation = BookDTO.class))),
+            @ApiResponse(responseCode = "404", description = "Book not found"),
+            @ApiResponse(responseCode = "400", description = "Invalid input data")
+    })
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> updateBook(
@@ -146,8 +159,10 @@ public class BookController extends BaseController<BookDTO, Long> {
     }
 
     @Operation(summary = "Delete a book", description = "Soft delete a book from the database")
-    @ApiResponse(responseCode = "204", description = "Book deleted successfully")
-    @ApiResponse(responseCode = "404", description = "Book not found")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Book deleted successfully"),
+            @ApiResponse(responseCode = "404", description = "Book not found")
+    })
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> deleteBook(
@@ -166,8 +181,10 @@ public class BookController extends BaseController<BookDTO, Long> {
     }
 
     @Operation(summary = "Hard delete a book", description = "Permanently delete a book from the database")
-    @ApiResponse(responseCode = "204", description = "Book permanently deleted")
-    @ApiResponse(responseCode = "404", description = "Book not found")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Book permanently deleted"),
+            @ApiResponse(responseCode = "404", description = "Book not found")
+    })
     @DeleteMapping("/{id}/hard")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> hardDeleteBook(
@@ -186,8 +203,10 @@ public class BookController extends BaseController<BookDTO, Long> {
     }
 
     @Operation(summary = "Restore a soft-deleted book", description = "Restore a previously soft-deleted book")
-    @ApiResponse(responseCode = "200", description = "Book restored successfully")
-    @ApiResponse(responseCode = "404", description = "Book not found")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Book restored successfully"),
+            @ApiResponse(responseCode = "404", description = "Book not found")
+    })
     @PatchMapping("/{id}/restore")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, Object>> restoreBook(
@@ -206,7 +225,9 @@ public class BookController extends BaseController<BookDTO, Long> {
     }
 
     @Operation(summary = "Search books", description = "Search books by title or author")
-    @ApiResponse(responseCode = "200", description = "Search completed successfully")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Search completed successfully")
+    })
     @GetMapping("/search")
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<Map<String, Object>> searchBooks(
@@ -225,7 +246,9 @@ public class BookController extends BaseController<BookDTO, Long> {
     }
 
     @Operation(summary = "Search books with pagination", description = "Search books by title or author with pagination")
-    @ApiResponse(responseCode = "200", description = "Search completed successfully")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Search completed successfully")
+    })
     @GetMapping("/search/page")
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<Map<String, Object>> searchBooksWithPagination(
@@ -245,7 +268,9 @@ public class BookController extends BaseController<BookDTO, Long> {
     }
 
     @Operation(summary = "Find books by title", description = "Find books by title (case insensitive)")
-    @ApiResponse(responseCode = "200", description = "Search completed successfully")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Search completed successfully")
+    })
     @GetMapping("/title/{title}")
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<Map<String, Object>> findByTitle(
@@ -264,7 +289,9 @@ public class BookController extends BaseController<BookDTO, Long> {
     }
 
     @Operation(summary = "Find books by author", description = "Find books by author (case insensitive)")
-    @ApiResponse(responseCode = "200", description = "Search completed successfully")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Search completed successfully")
+    })
     @GetMapping("/author/{author}")
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<Map<String, Object>> findByAuthor(
@@ -283,8 +310,11 @@ public class BookController extends BaseController<BookDTO, Long> {
     }
 
     @Operation(summary = "Find book by ISBN", description = "Find a specific book by its ISBN")
-    @ApiResponse(responseCode = "200", description = "Book found")
-    @ApiResponse(responseCode = "404", description = "Book not found")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Book found", 
+                        content = @Content(schema = @Schema(implementation = BookDTO.class))),
+            @ApiResponse(responseCode = "404", description = "Book not found")
+    })
     @GetMapping("/isbn/{isbn}")
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<Map<String, Object>> findByIsbn(
@@ -303,7 +333,9 @@ public class BookController extends BaseController<BookDTO, Long> {
     }
 
     @Operation(summary = "Find books by genre", description = "Find books by genre (case insensitive)")
-    @ApiResponse(responseCode = "200", description = "Search completed successfully")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Search completed successfully")
+    })
     @GetMapping("/genre/{genre}")
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<Map<String, Object>> findByGenre(
@@ -322,7 +354,9 @@ public class BookController extends BaseController<BookDTO, Long> {
     }
 
     @Operation(summary = "Find books by publisher", description = "Find books by publisher (case insensitive)")
-    @ApiResponse(responseCode = "200", description = "Search completed successfully")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Search completed successfully")
+    })
     @GetMapping("/publisher/{publisher}")
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<Map<String, Object>> findByPublisher(
@@ -341,7 +375,9 @@ public class BookController extends BaseController<BookDTO, Long> {
     }
 
     @Operation(summary = "Search external books by title", description = "Search books from Google Books API by title")
-    @ApiResponse(responseCode = "200", description = "External search completed successfully")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "External search completed successfully")
+    })
     @GetMapping("/external/search/title")
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<Map<String, Object>> searchExternalBooksByTitle(
@@ -360,7 +396,9 @@ public class BookController extends BaseController<BookDTO, Long> {
     }
 
     @Operation(summary = "Search external books by author", description = "Search books from Google Books API by author")
-    @ApiResponse(responseCode = "200", description = "External search completed successfully")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "External search completed successfully")
+    })
     @GetMapping("/external/search/author")
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<Map<String, Object>> searchExternalBooksByAuthor(
@@ -379,7 +417,9 @@ public class BookController extends BaseController<BookDTO, Long> {
     }
 
     @Operation(summary = "Search external books", description = "General search in Google Books API")
-    @ApiResponse(responseCode = "200", description = "External search completed successfully")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "External search completed successfully")
+    })
     @GetMapping("/external/search")
     @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
     public ResponseEntity<Map<String, Object>> searchExternalBooks(

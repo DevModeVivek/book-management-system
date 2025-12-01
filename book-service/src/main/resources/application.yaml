@@ -23,8 +23,9 @@ spring:
         format_sql: false
         
   security:
-    basic:
-      enabled: false
+    user:
+      name: admin
+      password: admin
     
 server:
   port: 8081
@@ -40,13 +41,27 @@ management:
   endpoint:
     health:
       show-details: always
-  security:
-    enabled: false
+
+# Swagger/OpenAPI Configuration
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    operationsSorter: method
+    tagsSorter: alpha
+    tryItOutEnabled: true
+    filter: true
+  show-actuator: true
+  paths-to-match: /books/**, /external/**, /actuator/**
 
 logging:
   level:
     com.vivek.bookservice: DEBUG
     org.springframework.web: INFO
     org.springframework.security: WARN
+    org.springdoc: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

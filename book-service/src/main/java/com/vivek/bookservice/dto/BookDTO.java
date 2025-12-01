@@ -7,6 +7,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.vivek.commons.constants.AppConstants;
 import com.vivek.commons.common.validation.ValidISBN;
 import com.vivek.commons.dto.base.BaseDTO;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
 import lombok.extern.slf4j.Slf4j;
@@ -16,8 +17,8 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 /**
- * Enhanced Book DTO with comprehensive validation using centralized constants
- * Extends BaseDTO for consistent data transfer patterns with proper Lombok SuperBuilder
+ * Book Data Transfer Object with comprehensive validation and Swagger documentation
+ * Extends BaseDTO for common fields like ID, timestamps, and audit information
  */
 @Data
 @EqualsAndHashCode(callSuper = true, onlyExplicitlyIncluded = true)
@@ -27,6 +28,7 @@ import java.time.LocalDate;
 @ToString(callSuper = true, exclude = {"description"})
 @Slf4j
 @JsonInclude(JsonInclude.Include.NON_NULL)
+@Schema(description = "Book data transfer object containing all book information")
 public class BookDTO extends BaseDTO {
     
     @NotBlank(message = "Title is required and cannot be empty")
@@ -35,6 +37,8 @@ public class BookDTO extends BaseDTO {
           message = "Title must be between {min} and {max} characters")
     @Pattern(regexp = AppConstants.RegexPatterns.TEXT_WITH_PUNCTUATION, 
              message = "Title contains invalid characters")
+    @EqualsAndHashCode.Include
+    @Schema(description = "Book title", example = "Clean Code: A Handbook of Agile Software Craftsmanship", required = true)
     private String title;
     
     @NotBlank(message = "Author is required and cannot be empty")
@@ -43,6 +47,7 @@ public class BookDTO extends BaseDTO {
           message = "Author must be between {min} and {max} characters")
     @Pattern(regexp = AppConstants.RegexPatterns.TEXT_WITH_PUNCTUATION, 
              message = "Author name contains invalid characters")
+    @Schema(description = "Book author name", example = "Robert C. Martin", required = true)
     private String author;
     
     @ValidISBN(message = "Invalid ISBN format. Must be a valid ISBN-10 or ISBN-13")
@@ -50,12 +55,14 @@ public class BookDTO extends BaseDTO {
           max = AppConstants.Validation.ISBN_MAX_LENGTH, 
           message = "ISBN length must be between {min} and {max} characters")
     @EqualsAndHashCode.Include
+    @Schema(description = "Book ISBN (10 or 13 digits)", example = "978-0132350884")
     private String isbn;
     
     @NotNull(message = "Published date is required")
     @PastOrPresent(message = "Published date cannot be in the future")
     @JsonFormat(pattern = "yyyy-MM-dd")
     @JsonProperty("publishedDate")
+    @Schema(description = "Book publication date", example = "2008-08-01", required = true)
     private LocalDate publishedDate;
     
     @DecimalMin(value = AppConstants.Validation.PRICE_MIN, 
@@ -64,34 +71,40 @@ public class BookDTO extends BaseDTO {
                 message = "Price cannot exceed {value}")
     @Digits(integer = 8, fraction = 2, 
             message = "Price must have at most 8 integer digits and 2 fractional digits")
+    @Schema(description = "Book price in USD", example = "45.99", minimum = "0.01", maximum = "9999.99")
     private BigDecimal price;
     
     @Size(max = AppConstants.Validation.DESCRIPTION_MAX_LENGTH, 
           message = "Description cannot exceed {max} characters")
+    @Schema(description = "Book description", example = "A comprehensive guide to writing clean, maintainable code")
     private String description;
     
     @Size(max = AppConstants.Validation.GENRE_MAX_LENGTH, 
           message = "Genre cannot exceed {max} characters")
     @Pattern(regexp = AppConstants.RegexPatterns.ALPHANUMERIC_WITH_SPACES, 
              message = "Genre contains invalid characters")
+    @Schema(description = "Book genre/category", example = "Programming")
     private String genre;
     
     @Size(max = AppConstants.Validation.PUBLISHER_MAX_LENGTH, 
           message = "Publisher cannot exceed {max} characters")
     @Pattern(regexp = AppConstants.RegexPatterns.TEXT_WITH_PUNCTUATION, 
              message = "Publisher name contains invalid characters")
+    @Schema(description = "Book publisher", example = "Pearson")
     private String publisher;
     
     @Min(value = AppConstants.Validation.PAGE_COUNT_MIN, 
          message = "Page count must be at least {value}")
     @Max(value = AppConstants.Validation.PAGE_COUNT_MAX, 
          message = "Page count cannot exceed {value}")
+    @Schema(description = "Number of pages in the book", example = "464", minimum = "1", maximum = "10000")
     private Integer pageCount;
     
     @Size(max = AppConstants.Validation.LANGUAGE_MAX_LENGTH, 
           message = "Language cannot exceed {max} characters")
     @Pattern(regexp = AppConstants.RegexPatterns.ALPHANUMERIC_WITH_SPACES, 
              message = "Language contains invalid characters")
+    @Schema(description = "Book language", example = "English", defaultValue = "English")
     private String language;
     
     // ============= ALTERNATIVE JSON PROPERTIES =============
@@ -114,6 +127,7 @@ public class BookDTO extends BaseDTO {
      * Check if the book has a price set
      */
     @JsonIgnore
+    @Schema(description = "Formatted price with currency symbol", example = "$45.99", accessMode = Schema.AccessMode.READ_ONLY)
     public boolean hasPrice() {
         return price != null && price.compareTo(BigDecimal.ZERO) > 0;
     }
@@ -149,6 +163,7 @@ public class BookDTO extends BaseDTO {
      * Check if this book is newly published (within last 2 years)
      */
     @JsonIgnore
+    @Schema(description = "Whether the book was published within the last 2 years", example = "false", accessMode = Schema.AccessMode.READ_ONLY)
     public boolean isNewlyPublished() {
         return getBookAgeInYears() <= 2;
     }
@@ -162,6 +177,31 @@ public class BookDTO extends BaseDTO {
                 title != null ? title : "Unknown Title",
                 author != null ? author : "Unknown Author",
                 publishedDate != null ? publishedDate.getYear() : "Unknown Year");
+    }
+    
+    /**
+     * Check if book is a lengthy read (more than 500 pages)
+     */
+    @Schema(description = "Whether the book is considered lengthy (>500 pages)", example = "false", accessMode = Schema.AccessMode.READ_ONLY)
+    public boolean isLengthyRead() {
+        return pageCount != null && pageCount > 500;
+    }
+    
+    /**
+     * Get book category based on page count
+     */
+    @Schema(description = "Book length category based on page count", example = "Medium", accessMode = Schema.AccessMode.READ_ONLY)
+    public String getLengthCategory() {
+        if (pageCount == null) {
+            return "Unknown";
+        }
+        if (pageCount <= 200) {
+            return "Short";
+        } else if (pageCount <= 500) {
+            return "Medium";
+        } else {
+            return "Long";
+        }
     }
     
     // ============= ENHANCED VALIDATION METHODS =============
