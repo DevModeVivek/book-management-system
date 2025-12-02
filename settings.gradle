@@ -1,1 +1,13 @@
-rootProject.name = 'book-management-system'
+rootProject.name = 'book-management-microservices'
+
+// Include all microservice modules
+include 'book-service'
+include 'user-service' 
+include 'notification-service'
+include 'shared-commons'
+
+// Set project directories for each module
+project(':book-service').projectDir = file('book-service')
+project(':user-service').projectDir = file('user-service')
+project(':notification-service').projectDir = file('notification-service')
+project(':shared-commons').projectDir = file('shared-commons')

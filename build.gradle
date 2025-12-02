@@ -1,92 +1,176 @@
 plugins {
     id 'java'
-    id 'org.springframework.boot' version '2.7.18'
-    id 'io.spring.dependency-management' version '1.1.0'
+    id 'org.springframework.boot' version '2.7.18' apply false
+    id 'io.spring.dependency-management' version '1.1.0' apply false
 }
 
-group = 'com.vivek'
-version = '0.0.1-SNAPSHOT'
-description = 'Book Management System Assignment'
-sourceCompatibility = '11'
-targetCompatibility = '11'
-
-repositories {
-    mavenCentral()
-}
-
-dependencies {
-    // Core Spring Boot starters
-    implementation 'org.springframework.boot:spring-boot-starter-web'
-    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
-    implementation 'org.springframework.boot:spring-boot-starter-validation'
-    implementation 'org.springframework.boot:spring-boot-starter-security'
-    implementation 'org.springframework.boot:spring-boot-starter-cache'
-    implementation 'org.springframework.boot:spring-boot-starter-actuator'
-    implementation 'org.springframework.boot:spring-boot-starter-webflux' // For WebClient (Phase 5)
+allprojects {
+    group = 'com.vivek'
+    version = '0.0.1-SNAPSHOT'
     
-    // Database
-    implementation 'com.h2database:h2'
-    
-    // Documentation - Swagger/OpenAPI (Phase 10)
-    implementation 'org.springdoc:springdoc-openapi-ui:1.6.15'
-    implementation 'org.springdoc:springdoc-openapi-security:1.6.15'
-    
-    // JWT Support (Phase 8)
-    implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
-    implementation 'io.jsonwebtoken:jjwt-impl:0.11.5'
-    implementation 'io.jsonwebtoken:jjwt-jackson:0.11.5'
-    
-    // Mapping and Utilities
-    implementation 'org.modelmapper:modelmapper:3.1.1'
-    compileOnly 'org.projectlombok:lombok'
-    annotationProcessor 'org.projectlombok:lombok'
-    
-    // Testing (Phase 9)
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
-    testImplementation 'org.springframework.security:spring-security-test'
-    testImplementation 'org.mockito:mockito-core'
-    testImplementation 'org.mockito:mockito-junit-jupiter'
-}
-
-test {
-    useJUnitPlatform()
-    testLogging {
-        events "passed", "skipped", "failed"
-        exceptionFormat "full"
-        showStandardStreams = false
-    }
-    reports {
-        html.required = true
-        junitXml.required = true
+    repositories {
+        mavenCentral()
     }
 }
 
-// Task to generate test reports (Phase 9)
-task testReport(type: TestReport) {
-    destinationDirectory = file("$buildDir/reports/allTests")
-    testResults.from test
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'org.springframework.boot'
+    apply plugin: 'io.spring.dependency-management'
+    
+    sourceCompatibility = '11'
+    targetCompatibility = '11'
+    
+    dependencies {
+        // Common dependencies for all microservices
+        implementation 'org.springframework.boot:spring-boot-starter-web'
+        implementation 'org.springframework.boot:spring-boot-starter-validation'
+        implementation 'org.springframework.boot:spring-boot-starter-actuator'
+        
+        // Redis Cache Dependencies - NEW FOR PHASE 2
+        implementation 'org.springframework.boot:spring-boot-starter-cache'
+        implementation 'org.springframework.boot:spring-boot-starter-data-redis'
+        implementation 'org.apache.commons:commons-pool2'
+        
+        // Jackson JSR310 Module - FIX FOR PHASE 2
+        implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
+        implementation 'com.fasterxml.jackson.core:jackson-databind'
+        
+        // Documentation
+        implementation 'org.springdoc:springdoc-openapi-ui:1.6.15'
+        
+        // Utilities
+        implementation 'org.modelmapper:modelmapper:3.1.1'
+        compileOnly 'org.projectlombok:lombok'
+        annotationProcessor 'org.projectlombok:lombok'
+        
+        // Testing
+        testImplementation 'org.springframework.boot:spring-boot-starter-test'
+        testImplementation 'org.mockito:mockito-core'
+        testImplementation 'org.mockito:mockito-junit-jupiter'
+    }
+    
+    test {
+        useJUnitPlatform()
+        testLogging {
+            events "passed", "skipped", "failed"
+            exceptionFormat "full"
+            showStandardStreams = false
+        }
+    }
+    
+    jar {
+        enabled = false
+        archiveClassifier = ''
+    }
+    
+    bootJar {
+        enabled = true
+        archiveFileName = "${project.name}.jar"
+    }
 }
 
-// JAR configuration for deployment (Phase 10)
-jar {
-    enabled = false
-    archiveClassifier = ''
+// Root project configuration to exclude original source
+sourceSets {
+    main {
+        java {
+            exclude 'com/vivek/bookms/**'
+        }
+    }
+    test {
+        java {
+            exclude 'com/vivek/bookms/**'
+        }
+    }
 }
 
-bootJar {
-    archiveFileName = 'book-management-system.jar'
-    mainClass = 'com.vivek.bookms.BookManagementSystemApplication'
+// Configure specific dependencies for each service
+project(':shared-commons') {
+    dependencies {
+        // Add JPA and Spring Data dependencies for BaseEntity
+        implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+        implementation 'org.springframework.boot:spring-boot-starter-security'
+    }
+    
+    bootJar {
+        enabled = false
+    }
+    jar {
+        enabled = true
+    }
 }
 
-// Task to run application with specific profile
-task runDev(type: JavaExec) {
-    classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'com.vivek.bookms.BookManagementSystemApplication'
-    systemProperty 'spring.profiles.active', 'dev'
+project(':book-service') {
+    dependencies {
+        implementation project(':shared-commons')
+        implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+        implementation 'org.springframework.boot:spring-boot-starter-security'
+        implementation 'org.springframework.boot:spring-boot-starter-webflux'
+        implementation 'com.h2database:h2'
+        
+        // JWT Support
+        implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
+        implementation 'io.jsonwebtoken:jjwt-impl:0.11.5'
+        implementation 'io.jsonwebtoken:jjwt-jackson:0.11.5'
+    }
+    
+    bootJar {
+        mainClass = 'com.vivek.bookservice.BookServiceApplication'
+    }
 }
 
-task runProd(type: JavaExec) {
-    classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'com.vivek.bookms.BookManagementSystemApplication'
-    systemProperty 'spring.profiles.active', 'prod'
+project(':user-service') {
+    dependencies {
+        implementation project(':shared-commons')
+        implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+        implementation 'org.springframework.boot:spring-boot-starter-security'
+        implementation 'com.h2database:h2'
+        
+        // JWT Support
+        implementation 'io.jsonwebtoken:jjwt-api:0.11.5'
+        implementation 'io.jsonwebtoken:jjwt-impl:0.11.5'
+        implementation 'io.jsonwebtoken:jjwt-jackson:0.11.5'
+    }
+    
+    bootJar {
+        mainClass = 'com.vivek.userservice.UserServiceApplication'
+    }
+}
+
+project(':notification-service') {
+    dependencies {
+        implementation project(':shared-commons')
+        implementation 'org.springframework.boot:spring-boot-starter-mail'
+        implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+        implementation 'com.h2database:h2'
+    }
+    
+    bootJar {
+        mainClass = 'com.vivek.notificationservice.NotificationServiceApplication'
+    }
+}
+
+// Tasks to run individual services
+task runBookService(type: Exec) {
+    group = 'application'
+    description = 'Run Book Service'
+    commandLine './gradlew', ':book-service:bootRun'
+}
+
+task runUserService(type: Exec) {
+    group = 'application'
+    description = 'Run User Service'
+    commandLine './gradlew', ':user-service:bootRun'
+}
+
+task runNotificationService(type: Exec) {
+    group = 'application'
+    description = 'Run Notification Service'
+    commandLine './gradlew', ':notification-service:bootRun'
+}
+
+task runAllServices {
+    group = 'application'
+    description = 'Run all microservices'
+    dependsOn 'runBookService', 'runUserService', 'runNotificationService'
 }
