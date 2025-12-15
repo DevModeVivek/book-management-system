@@ -81,6 +81,8 @@ public class CacheController {
         
         try {
             // Clear application caches
+            bookService.clearAllBookCaches();
+            
             for (String cacheName : cacheManager.getCacheNames()) {
                 if (cacheManager.getCache(cacheName) != null) {
                     cacheManager.getCache(cacheName).clear();
@@ -140,7 +142,7 @@ public class CacheController {
         
         try {
             // Clear cache first
-            bookService.clearAllCaches();
+            bookService.clearAllBookCaches();
             
             // Test without cache (first run)
             long startTime = System.currentTimeMillis();

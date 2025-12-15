@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -98,20 +99,27 @@ public interface IBookService extends ICrudService<BookDTO, Long> {
      */
     boolean existsByIsbnAndIdNot(String isbn, Long excludeId);
     
-    // ============= CACHE MANAGEMENT OPERATIONS - NEW FOR PHASE 2 =============
+    // ============= CACHE MANAGEMENT OPERATIONS =============
     
     /**
-     * Clear all book-related caches
+     * Clear all book caches
      */
-    void clearAllCaches();
+    void clearAllBookCaches();
     
     /**
-     * Clear books cache
+     * Clear cache for a specific book
+     * @param bookId the book ID
      */
-    void clearBooksCache();
+    void clearBookCache(Long bookId);
     
     /**
-     * Clear search cache
+     * Warm up the book cache
      */
-    void clearSearchCache();
+    void warmUpBookCache();
+    
+    /**
+     * Get cache statistics
+     * @return cache statistics as a map
+     */
+    Map<String, Object> getCacheStatistics();
 }
