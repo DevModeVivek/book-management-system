@@ -206,22 +206,51 @@ public class AppConstants {
         public static final int SEARCH_TTL_SECONDS = 1800; // 30 minutes
     }
     
-    // ============= MICROSERVICES CONSTANTS =============
+    // ============= MESSAGING CONSTANTS =============
+    @UtilityClass
+    public static class Messaging {
+        // Exchange names
+        public static final String BOOK_EXCHANGE = "book.exchange";
+        public static final String USER_EXCHANGE = "user.exchange";
+        public static final String NOTIFICATION_EXCHANGE = "notification.exchange";
+        public static final String DLQ_EXCHANGE = "dlq.exchange";
+        
+        // Queue names
+        public static final String BOOK_CREATED_QUEUE = "book.created.queue";
+        public static final String BOOK_UPDATED_QUEUE = "book.updated.queue";
+        public static final String BOOK_DELETED_QUEUE = "book.deleted.queue";
+        public static final String NOTIFICATION_SEND_QUEUE = "notification.send.queue";
+        
+        // Dead Letter Queue names
+        public static final String BOOK_CREATED_DLQ = "book.created.dlq";
+        public static final String BOOK_UPDATED_DLQ = "book.updated.dlq";
+        public static final String BOOK_DELETED_DLQ = "book.deleted.dlq";
+        public static final String NOTIFICATION_SEND_DLQ = "notification.send.dlq";
+        
+        // Routing keys
+        public static final String BOOK_CREATED_ROUTING_KEY = "book.created";
+        public static final String BOOK_UPDATED_ROUTING_KEY = "book.updated";
+        public static final String BOOK_DELETED_ROUTING_KEY = "book.deleted";
+        public static final String NOTIFICATION_SEND_ROUTING_KEY = "notification.send";
+        
+        // Headers
+        public static final String CORRELATION_ID_HEADER = "X-Correlation-ID";
+        public static final String EVENT_TYPE_HEADER = "X-Event-Type";
+        public static final String SOURCE_SERVICE_HEADER = "X-Source-Service";
+        public static final String TIMESTAMP_HEADER = "X-Timestamp";
+        
+        // Configuration values
+        public static final int MAX_RETRY_COUNT = 3;
+        public static final String RETRY_DELAY = "1000";
+        public static final String MESSAGE_TTL = "86400000"; // 24 hours
+    }
+    
+    // ============= SERVICE NAMES =============
     @UtilityClass
     public static class Services {
         public static final String BOOK_SERVICE = "book-service";
         public static final String USER_SERVICE = "user-service";
         public static final String NOTIFICATION_SERVICE = "notification-service";
-        
-        // Service ports
-        public static final int BOOK_SERVICE_PORT = 8081;
-        public static final int USER_SERVICE_PORT = 8082;
-        public static final int NOTIFICATION_SERVICE_PORT = 8083;
-        
-        // Service URLs
-        public static final String BOOK_SERVICE_URL = "http://localhost:" + BOOK_SERVICE_PORT;
-        public static final String USER_SERVICE_URL = "http://localhost:" + USER_SERVICE_PORT;
-        public static final String NOTIFICATION_SERVICE_URL = "http://localhost:" + NOTIFICATION_SERVICE_PORT;
     }
     
     // ============= GENERAL CONTEXTS =============
