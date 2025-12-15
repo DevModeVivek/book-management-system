@@ -47,6 +47,35 @@ spring:
       type: redis
       redis:
         time-to-live: 600000ms  # 10 minutes TTL
+
+  # RabbitMQ Configuration
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    virtual-host: /
+    connection-timeout: 30000
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+      retry:
+        enabled: true
+        initial-interval: 1000
+        max-attempts: 3
+        max-interval: 10000
+        multiplier: 2
+    listener:
+      simple:
+        acknowledge-mode: auto
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          initial-interval: 1000
+          max-attempts: 3
+          max-interval: 10000
+          multiplier: 2
         
   cache:
     type: redis
@@ -113,3 +142,30 @@ cache:
     external-books:
       ttl: 1800  # 30 minutes
       max-size: 200
+
+# External API Configuration
+external:
+  google-books:
+    base-url: https://www.googleapis.com/books/v1
+    api-key: ${GOOGLE_BOOKS_API_KEY:}  # Set via environment variable
+    timeout: 5000
+    max-results: 10
+
+# Messaging Configuration - NEW FOR PHASE 3
+messaging:
+  event:
+    publishing:
+      enabled: true
+      retry-attempts: 3
+      retry-delay: 1000
+    exchanges:
+      book: book.exchange
+      dlq: dlq.exchange
+    queues:
+      book-created: book.created.queue
+      book-updated: book.updated.queue
+      book-deleted: book.deleted.queue
+    routing-keys:
+      book-created: book.created
+      book-updated: book.updated
+      book-deleted: book.deleted

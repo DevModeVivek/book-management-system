@@ -22,6 +22,27 @@ spring:
       hibernate:
         format_sql: true
 
+  # RabbitMQ Configuration
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    virtual-host: /
+    connection-timeout: 30000
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    listener:
+      simple:
+        acknowledge-mode: auto
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          initial-interval: 1000
+          max-attempts: 3
+          max-interval: 10000
+          multiplier: 2
+
   mail:
     host: smtp.gmail.com
     port: 587
@@ -43,7 +64,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,rabbitmq
   endpoint:
     health:
       show-details: always
@@ -55,9 +76,39 @@ services:
   user:
     url: http://localhost:8082/api/v1
 
+# Messaging Configuration - NEW FOR PHASE 3
+messaging:
+  event:
+    consuming:
+      enabled: true
+      retry-attempts: 3
+      retry-delay: 1000
+    exchanges:
+      book: book.exchange
+      notification: notification.exchange
+      dlq: dlq.exchange
+    queues:
+      book-created: book.created.queue
+      book-updated: book.updated.queue
+      book-deleted: book.deleted.queue
+      notification-send: notification.send.queue
+
+# Notification Configuration
+notification:
+  email:
+    enabled: true
+    default-sender: "noreply@bookmanagement.com"
+    retry-attempts: 3
+  templates:
+    book-created: "book-created-template"
+    book-updated: "book-updated-template"
+    book-deleted: "book-deleted-template"
+
 logging:
   level:
     com.vivek.notificationservice: DEBUG
     org.springframework.web: DEBUG
+    org.springframework.amqp: DEBUG
+    org.springframework.rabbit: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
