@@ -18,8 +18,8 @@ subprojects {
     apply plugin: 'org.springframework.boot'
     apply plugin: 'io.spring.dependency-management'
     
-    sourceCompatibility = '11'
-    targetCompatibility = '11'
+    sourceCompatibility = '17'
+    targetCompatibility = '17'
     
     dependencies {
         // Common dependencies for all microservices
@@ -27,12 +27,16 @@ subprojects {
         implementation 'org.springframework.boot:spring-boot-starter-validation'
         implementation 'org.springframework.boot:spring-boot-starter-actuator'
         
-        // Redis Cache Dependencies - NEW FOR PHASE 2
+        // Redis Cache Dependencies
         implementation 'org.springframework.boot:spring-boot-starter-cache'
         implementation 'org.springframework.boot:spring-boot-starter-data-redis'
         implementation 'org.apache.commons:commons-pool2'
         
-        // Jackson JSR310 Module - FIX FOR PHASE 2
+        // RabbitMQ Dependencies
+        implementation 'org.springframework.boot:spring-boot-starter-amqp'
+        implementation 'org.springframework.amqp:spring-rabbit'
+        
+        // Jackson JSR310 Module
         implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310'
         implementation 'com.fasterxml.jackson.core:jackson-databind'
         
@@ -48,6 +52,8 @@ subprojects {
         testImplementation 'org.springframework.boot:spring-boot-starter-test'
         testImplementation 'org.mockito:mockito-core'
         testImplementation 'org.mockito:mockito-junit-jupiter'
+        // RabbitMQ Testing Support
+        testImplementation 'org.springframework.amqp:spring-rabbit-test'
     }
     
     test {
@@ -90,6 +96,14 @@ project(':shared-commons') {
         // Add JPA and Spring Data dependencies for BaseEntity
         implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
         implementation 'org.springframework.boot:spring-boot-starter-security'
+        
+        // Add RabbitMQ dependencies for messaging infrastructure
+        implementation 'org.springframework.boot:spring-boot-starter-amqp'
+        implementation 'org.springframework.amqp:spring-rabbit'
+        
+        // Add retry dependencies for messaging
+        implementation 'org.springframework.retry:spring-retry'
+        implementation 'org.springframework:spring-aspects'
     }
     
     bootJar {
@@ -142,6 +156,7 @@ project(':notification-service') {
         implementation project(':shared-commons')
         implementation 'org.springframework.boot:spring-boot-starter-mail'
         implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+        implementation 'org.springframework.boot:spring-boot-starter-security'
         implementation 'com.h2database:h2'
     }
     

@@ -23,6 +23,7 @@ import javax.validation.Valid;
 import javax.validation.constraints.NotNull;
 import java.util.List;
 import java.util.Optional;
+import java.util.Map;
 
 /**
  * Enhanced Book service extending BaseService with centralized constants and comprehensive validation
@@ -446,7 +447,43 @@ public class BookService extends BaseService<Book, BookDTO, Long> implements IBo
         super.restore(id);
     }
     
-    // Cache management methods for monitoring and control
+    // ============= CACHE MANAGEMENT OPERATIONS (Interface Implementation) =============
+    
+    @Override
+    @CacheEvict(value = {"books", "book-search", "book-by-id", "book-by-isbn"}, allEntries = true)
+    public void clearAllBookCaches() {
+        log.info("Clearing all book-related caches");
+    }
+    
+    @Override
+    @CacheEvict(value = {"book-by-id", "book-by-isbn"}, key = "#bookId")
+    public void clearBookCache(Long bookId) {
+        log.info("Clearing cache for book ID: {}", bookId);
+    }
+    
+    @Override
+    public void warmUpBookCache() {
+        log.info("Warming up book cache...");
+        try {
+            // Load frequently accessed books into cache
+            List<BookDTO> recentBooks = getAll(org.springframework.data.domain.PageRequest.of(0, 20)).getContent();
+            log.info("Loaded {} books into cache during warmup", recentBooks.size());
+        } catch (Exception e) {
+            log.warn("Cache warmup failed: {}", e.getMessage());
+        }
+    }
+    
+    @Override
+    public Map<String, Object> getCacheStatistics() {
+        // In a real implementation, this would integrate with cache metrics
+        Map<String, Object> stats = new java.util.HashMap<>();
+        stats.put("cacheNames", List.of("books", "book-search", "book-by-id", "book-by-isbn"));
+        stats.put("lastUpdated", java.time.LocalDateTime.now());
+        stats.put("status", "active");
+        return stats;
+    }
+    
+    // ============= EXISTING CACHE MANAGEMENT METHODS =============
     
     @CacheEvict(value = {"books", "book-search", "book-by-id", "book-by-isbn"}, allEntries = true)
     public void clearAllCaches() {

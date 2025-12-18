@@ -21,7 +21,41 @@ spring:
     properties:
       hibernate:
         format_sql: true
-        
+
+  # RabbitMQ Configuration
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: guest
+    password: guest
+    virtual-host: /
+    connection-timeout: 30000
+    publisher-confirm-type: correlated
+    publisher-returns: true
+    template:
+      mandatory: true
+      retry:
+        enabled: true
+        initial-interval: 1000
+        max-attempts: 3
+        max-interval: 10000
+        multiplier: 2
+    listener:
+      simple:
+        acknowledge-mode: auto
+        default-requeue-rejected: false
+        retry:
+          enabled: true
+          initial-interval: 1000
+          max-attempts: 3
+          max-interval: 10000
+          multiplier: 2
+
+  security:
+    user:
+      name: admin
+      password: admin
+
 server:
   port: 8082
   servlet:
@@ -31,7 +65,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,rabbitmq
   endpoint:
     health:
       show-details: always
@@ -43,9 +77,33 @@ services:
   notification:
     url: http://localhost:8083/api/v1
 
+# Messaging Configuration
+messaging:
+  event:
+    publishing:
+      enabled: true
+      retry-attempts: 3
+      retry-delay: 1000
+    exchanges:
+      user: user.exchange
+      notification: notification.exchange
+      dlq: dlq.exchange
+    queues:
+      user-registered: user.registered.queue
+    routing-keys:
+      user-registered: user.registered
+
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET:bookManagementSecretKeyForDevelopmentOnly}
+  expiration: 86400000  # 24 hours in milliseconds
+
 logging:
   level:
     com.vivek.userservice: DEBUG
     org.springframework.web: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.amqp: DEBUG
+    org.springframework.rabbit: DEBUG
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
